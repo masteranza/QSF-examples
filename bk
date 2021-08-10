@@ -1,0 +1,37 @@
+#!/bin/sh
+# Run process in background
+# Immune from logoffs -- output to file log
+
+#If you want colors
+export TERM=xterm-256color
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+BLUE=$(tput setaf 4)
+PINK=$(tput setaf 5)
+BLACK=$(tput init)
+NC=$(tput sgr0)
+INFC="${YELLOW}"
+#Remove previous log if there is one
+(test -f "$*.log") && rm "$*.log"
+
+(
+    if [ "$USER" = "ranza" ]; then
+        echo "Custom LD_LIBRARY_PATH"
+        export LD_LIBRARY_PATH=/home/ranza/gsl/lib
+        LC_ALL=C
+    fi
+    echo "${PINK}Date:${GREEN} $(date)"
+    echo "${PINK}Command:${GREEN} $*${NC}"
+    nice nohup "$@"
+    echo "${PINK}Completed: ${GREEN}$(date)${NC}"
+    echo
+) >>${LOGFILE:=$*.log} 2>&1 &
+
+#Show the lines of the log after 1s to see how it is working
+slper=1
+sleep $slper
+echo "${INFC}----------------------- \"${GREEN}$*.log${INFC}\" file after ${slper}s -----------------------"
+cat "$*.log"
+echo "${INFC}----------------------- \"${GREEN}$*.log${INFC}\" file END -----------------------"
+echo

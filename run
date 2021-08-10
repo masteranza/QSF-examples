@@ -1,0 +1,104 @@
+#!/bin/bash
+set -e #Fail on any error
+
+cores=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu || echo "$NUMBER_OF_PROCESSORS")
+echo "About to use $cores cores";
+
+#build
+cmake --build build --target install; 
+
+
+if [ "$1" = "" ]; then
+    proj="template"
+else
+    proj=$1
+fi
+
+if [ "$2" != "" ]; then
+    cores=$2
+fi
+#run
+# ./template/qsf-template
+# time make ${proj}/${what}
+# [ "$1" == "clean" ] && exit 0
+# [ "$1" == "clean1d" ] && exit 0
+
+cd $proj
+
+# module load intelMPI
+# [ $(uname) = "Linux" ] && source /opt/intel/Compiler/19.0/bin/compilervars.sh arch intel64
+[ $(uname) = "Linux" ] && mpirun -np $cores ./qsf-${proj}
+# [ $(uname) = "Linux" ] && mpirun -np 2 valgrind --leak-check=yes --show-leak-kinds=all --verbose ./${what}
+
+[ $(uname) = "Darwin" ] && mpirun --host localhost:$cores ./qsf-${proj}
+
+
+
+# [ $(uname) = "Darwin" ] && mpirun --mca btl vader,self,tcp -np 8 ./${what} $3
+# [ $(uname) = "Darwin" ] && [ $(uname -m) = "arm64" ] && mpirun -np 2 ./${what} $3
+# [ $(uname) = "Darwin" ] && [ $(uname -m) = "x86_64" ] && mpirun -np 4 ./${what} $3
+
+
+# skipplots=false
+# autoopen=true
+# autoopenmerged=false
+
+# [ "$skipplots" = true ] && exit 0
+
+# REL="../../../"
+# cd Results
+
+# shopt -s nullglob
+#1D
+# FILES=mom*x.dat
+# for f in $FILES
+# do
+#   echo "Processing $f file..."
+#   gnuplot -e "filename='$f'" -e "xaxis=\"p [au]\"" "${REL}plots/wf1d.gnu"
+#   [ "$autoopen" = true ] && open "${f%.*}.pdf"
+# done
+# FILES=psi*x.dat
+# for f in $FILES
+# do
+#   echo "Processing $f file..."
+#   gnuplot -e "filename='$f'" -e "xaxis=\"x [au]\"" "${REL}plots/wf1d.gnu"
+#   [ "$autoopen" = true ] && open "${f%.*}.pdf"
+# done
+
+# # 2D
+# FILES=mom*xy.dat
+# for f in $FILES
+# do
+#   echo "Processing $f file..."
+#   gnuplot -e "filename='$f'" -e "xaxis=\"p_x [au]\"" -e "yaxis=\"p_y [au]\"" "${REL}plots/wf2d.gnu"
+#   [ "$autoopen" = true ] && open "${f%.*}.pdf"
+# done
+
+# FILES=$(ls psi*xy.dat | sort -n -t _ -k 2) 
+# # FILES=psi*xy.dat
+# for f in $FILES
+# do
+#   echo "Processing $f file..."
+#   gnuplot -e "filename='$f'" -e "xaxis=\"x [au]\""  -e "yaxis=\"y [au]\"" "${REL}plots/wf2d.gnu"
+#   [ "$autoopen" = true ] && open "${f%.*}.pdf"
+# done
+# #JOIN
+# gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress -sOutputFile=psi_xy_merged.pdf psi*xy.pdf
+# [ "$autoopenmerged" = true ] && open psi_xy_merged.pdf
+#HHG'S
+# FILES=hhg*.dat
+# for f in $FILES
+# do
+#   echo "Processing $f file..."
+#   gnuplot -e "filename='$f'" "${REL}plots/hhg.gnu"
+#   [ "$autoopen" = true ] && open "${f%.*}.pdf"
+# done
+
+# Fields
+# FILES=exf*.dat
+# for f in $FILES
+# do
+#   echo "Processing $f file..."
+#   gnuplot -e "filename='$f'" "${REL}plots/exf.gnu"
+#   [ "$autoopen" = true ] && open "${f%.*}.pdf"
+# done

@@ -1,0 +1,3 @@
+[submodule "QSF"]
+	path = QSF
+	url = https://github.com/masteranza/QSF.git
