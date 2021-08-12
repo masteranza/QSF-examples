@@ -11,7 +11,7 @@ using SplitType = MultiProductSplit<VTV, order>;
 int main(int argc, char* argv[])
 {
 	QSF::init(argc, argv);
-	const ind nodes = 64;
+	const ind nodes = 32;
 	const double dx = 50.0 / nodes;
 	const ind nCAP = nodes / 4;
 	EckhardtSachaInteraction potential{ {.Ncharge = 3, .Echarge = -1, .Nsoft = 1.830, .Esoft = 1.830 } };
@@ -31,7 +31,10 @@ int main(int argc, char* argv[])
 			, SUM<AVG<PotentialEnergy>, AVG<KineticEnergy>>
 			, CHANGE<SUM<AVG<PotentialEnergy>, AVG<KineticEnergy>>>
 		>{ {.comp_interval = 1, .log_interval = 20} };
-		auto p1 = SplitPropagator<MODE::RE, SplitType, decltype(im_wf)>{ {.dt = 0.3}, std::move(im_wf) };
+		auto p1 = SplitPropagator<MODE::IM, SplitType, decltype(im_wf)>
+		{
+			{.dt = 0.3,.max_steps = 1000000, .state_accuracy = 10E-15}, std::move(im_wf)
+		};
 		p1.run(im_outputs, [&](const WHEN when, const ind step, const uind pass, auto& wf)
 			   {
 
@@ -66,8 +69,6 @@ int main(int argc, char* argv[])
 	}
 
 
-	logInfo("Next computation! %s\n", im_output_name.c_str());
-
 	// MultiCartesianGrid<3_D, CAP> re_grid{ {.dx = {0.5,0.5,0.5}, .n = {32,32,32} } };
 	// CAP<MultiCartesianGrid<3_D>> re_capped_grid{ {0.393700787401575, 128}, 8 };
 	// CAP<MultiCartesianGrid<2_D>> re_capped_grid{ {0.3, 64}, 16 };
@@ -82,7 +83,7 @@ int main(int argc, char* argv[])
 	DipoleCoupling<VelocityGauge, F1> re_coupling
 	{
 		SinPulse{{
-			.F0 = .2 * sqrt(2. / 3.), .omega = 0.06,
+			.F0 = .1 * sqrt(2. / 3.), .omega = 0.06,
 			.ncycles = 1.0, .FWHM_percent = 0.9,
 			.phase_in_pi_units = 0, .delay_in_cycles = 0
 			}}
@@ -115,14 +116,14 @@ int main(int argc, char* argv[])
 					//    wf.addUsingCoordinateFunction(
 					// 	   [](auto... x) -> cxd
 					// 	   {
-					// 		//    std::size_t i = 2;
-					// 		//    double res = 0.0;
-					// 		//    ((res = x * 2.0, true) || ...);
-					// 		//    ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
-					// 		//    return sin(((x * 1.9) + ...));
-					// 		//    return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
-					// 		//    return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
-					// 		//    return gaussian(0.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+					// 		   std::size_t i = 2;
+					// 		   double res = 0.0;
+					// 		   ((res = x * 2.0, true) || ...);
+					// 		   ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
+					// 		   return sin(((x * 1.9) + ...));
+					// 		   return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
+					// 		   return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+					// 		   return gaussian(0.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
 					// 	   });
 
 				   logUser("wf loaded manually!");
@@ -141,7 +142,7 @@ int main(int argc, char* argv[])
 				//    if (step == 350)wf.save("at350_");
 			   }
 			   if (when == WHEN::AT_END)
-				   wf.save("final");
+				   wf.save("finalP_", { 3_D, REP::P, true, true, true, true, false });
 		   });
 	QSF::finalize();
 }
