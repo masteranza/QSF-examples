@@ -28,42 +28,41 @@ int main(int argc, char* argv[])
 	std::string im_output_name = "./Results/im0ELECeDIMd__aft_xyz.psib0";
 
 	{
-		auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
-		p1.run<im_outputs_t>(
-			[&](const WHEN when, const ind step, const uind pass, auto& wf)
-			{
-				if (when == WHEN::AT_START)
-				{
-					wf.addUsingCoordinateFunction(
-						[](auto... x) -> cxd
-						{
-							// std::size_t i = 0;
-							// double res = 0.0;
-							// ((res = x * 1.2, true) || ...); //select first
-							// ((i++ == 0 ? (res = x * 0.0, true) : false) || ...); //select i-th
-							// return cxd{ cos(res) * gaussian(0.0, 2.0, x...), sin(res) };
-							return cxd{ gaussian(0.0, 2.0, x...), 0 };
-						});
-					logUser("wf loaded manually!");
-					// wf.save("ati0_");
-				}
-				if (when == WHEN::DURING)
-				{
-					// if (step == 1)wf.save("ati1_");
-					// if (step == 50)wf.save("ati50_");
-					// if (step == 100)wf.save("ati100_");
-					// if (step == 150)wf.save("ati150_");
-					// if (step == 200)wf.save("ati200_");
-					// if (step == 1000)wf.save("ati1000_");
-					// if (step == 10000)wf.save("ati10000_");
-				}
-				if (when == WHEN::AT_END)
-					im_output_name = wf.save("im");
-			});
-
+		// auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
+		// p1.run<im_outputs_t>(
+		// 	[&](const WHEN when, const ind step, const uind pass, auto& wf)
+		// 	{
+		// 		if (when == WHEN::AT_START)
+		// 		{
+		// 			wf.addUsingCoordinateFunction(
+		// 				[](auto... x) -> cxd
+		// 				{
+		// 					// std::size_t i = 0;
+		// 					// double res = 0.0;
+		// 					// ((res = x * 1.2, true) || ...); //select first
+		// 					// ((i++ == 0 ? (res = x * 0.0, true) : false) || ...); //select i-th
+		// 					// return cxd{ cos(res) * gaussian(0.0, 2.0, x...), sin(res) };
+		// 					return cxd{ gaussian(0.0, 2.0, x...), 0 };
+		// 				});
+		// 			logUser("wf loaded manually!");
+		// 			// wf.save("ati0_");
+		// 		}
+		// 		if (when == WHEN::DURING)
+		// 		{
+		// 			// if (step == 1)wf.save("ati1_");
+		// 			// if (step == 50)wf.save("ati50_");
+		// 			// if (step == 100)wf.save("ati100_");
+		// 			// if (step == 150)wf.save("ati150_");
+		// 			// if (step == 200)wf.save("ati200_");
+		// 			// if (step == 1000)wf.save("ati1000_");
+		// 			// if (step == 10000)wf.save("ati10000_");
+		// 		}
+		// 		if (when == WHEN::AT_END)
+		// 			im_output_name = wf.save("im");
+		// 	});
 	}
 
-	logInfo("Next computation! %s\n", im_output_name.c_str());
+	// logInfo("Next computation! %s\n", im_output_name.c_str());
 
 	// MultiCartesianGrid<3_D, CAP> re_grid{ {.dx = {0.5,0.5,0.5}, .n = {32,32,32} } };
 	// CAP<MultiCartesianGrid<3_D>> re_capped_grid{ {0.393700787401575, 128}, 8 };
@@ -110,19 +109,19 @@ int main(int argc, char* argv[])
 			   if (when == WHEN::AT_START)
 			   {
 				   if (MPI::region == 0)
-					   wf.load(im_output_name);
-				//    wf.addUsingCoordinateFunction(
-				// 	   [](auto... x) -> cxd
-				// 	   {
-				// 		//    std::size_t i = 2;
-				// 		//    double res = 0.0;
-				// 		//    ((res = x * 2.0, true) || ...);
-				// 		//    ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
-				// 		//    return sin(((x * 1.9) + ...));
-				// 		//    return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
-				// 		//    return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
-				// 		   return gaussian(8.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
-				// 	   });
+					//    wf.load(im_output_name);
+					   wf.addUsingCoordinateFunction(
+						   [](auto... x) -> cxd
+						   {
+							//    std::size_t i = 2;
+							//    double res = 0.0;
+							//    ((res = x * 2.0, true) || ...);
+							//    ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
+							//    return sin(((x * 1.9) + ...));
+							//    return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
+							//    return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+							   return gaussian(8.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+						   });
 
 				   logUser("wf loaded manually!");
 				   wf.save("at0_");

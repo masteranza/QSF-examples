@@ -8,7 +8,7 @@ project(QSF-examples)
 add_subdirectory(QSF)
 # Compile example projects
 add_subdirectory(template)
-add_subdirectory(template-3e)
+add_subdirectory(nitrogen-3e)
 
 
 

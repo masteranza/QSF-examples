@@ -1,7 +1,7 @@
 #Designed to be run with:
 #CC=gcc-11 CXX=g++-11 cmake . -B project-name/build; cmake --build project-name/build --target install
 cmake_minimum_required(VERSION 3.8)
-project(template-3e LANGUAGES CXX)
+project(nitrogen-3e LANGUAGES CXX)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_RULE_MESSAGES OFF)
