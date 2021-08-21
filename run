@@ -27,10 +27,12 @@ cd $proj
 
 # module load intelMPI
 # [ $(uname) = "Linux" ] && source /opt/intel/Compiler/19.0/bin/compilervars.sh arch intel64
-[ $(uname) = "Linux" ] && mpirun -np $cores ./qsf-${proj}
+shift; 
+shift;
+[ $(uname) = "Linux" ] && mpirun -np $cores ./qsf-${proj} $@
 # [ $(uname) = "Linux" ] && mpirun -np 2 valgrind --leak-check=yes --show-leak-kinds=all --verbose ./${what}
 
-[ $(uname) = "Darwin" ] && mpirun --host localhost:$cores ./qsf-${proj}
+[ $(uname) = "Darwin" ] && mpirun --host localhost:$cores ./qsf-${proj} $@
 
 
 

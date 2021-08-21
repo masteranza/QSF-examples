@@ -28,7 +28,8 @@ dryrun=0
 declare -i index
 user=`whoami`
 host="$1"
-address="$user@$host"
+# address="$user@$host"
+address="$host"
 sourceDir="./"
 targetDir="~"
 CURRENT=`pwd`

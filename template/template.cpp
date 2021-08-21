@@ -1,7 +1,5 @@
-#define QSF_MULTIGRID true
 #include "QSF/qsf.h"
 // #include "QSF/fluxes/borders.h"
-// #include "template.h"
 
 constexpr auto opt = OPTIMS::NONE;
 constexpr auto order = 1;
@@ -10,7 +8,7 @@ using SplitType = MultiProductSplit<VTV, order>;
 
 int main(int argc, char* argv[])
 {
-	QSF::init(argc, argv);
+	QSF::init(project_dir, "Results", argc, argv);
 	using im_grid_t = CartesianGrid<3_D>; //2_D == DIMS::D2
 	using im_wf_t = Schrodinger::Spin0<im_grid_t, EckhardtSachaInteraction>;
 	using im_outputs_t = BufferedBinaryOutputs<
