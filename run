@@ -29,10 +29,11 @@ cd $proj
 # [ $(uname) = "Linux" ] && source /opt/intel/Compiler/19.0/bin/compilervars.sh arch intel64
 shift; 
 shift;
+echo "Remaining params passed to app $@"
 [ $(uname) = "Linux" ] && mpirun -np $cores ./qsf-${proj} $@
 # [ $(uname) = "Linux" ] && mpirun -np 2 valgrind --leak-check=yes --show-leak-kinds=all --verbose ./${what}
 
-[ $(uname) = "Darwin" ] && mpirun --host localhost:$cores ./qsf-${proj} $@
+[ $(uname) = "Darwin" ] && mpirun --host localhost:$cores ./qsf-${proj}-re $@
 
 
 
