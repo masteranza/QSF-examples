@@ -16,8 +16,10 @@ int main(int argc, char* argv[])
 	QSF::init(loc.c_str(), dir.c_str(), argc, argv);
 #ifdef SIZE
 	const ind nodes = SIZE;
+	constexpr DIMS dim = 2_D;
 #else
 	const ind nodes = 1024;
+	constexpr DIMS dim = 3_D;
 #endif 
 	const ind nCAP = nodes / 4;
 	const double dx = 100.0 / 511.0;
@@ -37,7 +39,7 @@ int main(int argc, char* argv[])
 
 	if (SHOULD_RUN(MODE::IM)) //if any parameter is passed assume gs
 	{
-		CAP<CartesianGrid<3_D>> im_grid{ {dx, nodes}, nCAP };
+		CAP<CartesianGrid<dim>> im_grid{ {dx, nodes}, nCAP };
 		auto im_wf = Schrodinger::Spin0{ im_grid, potential };
 		auto im_outputs = BufferedBinaryOutputs<
 			VALUE<Step, Time>
@@ -71,13 +73,14 @@ int main(int argc, char* argv[])
 				   }
 				   if (when == WHEN::AT_END) wf.save("im");
 			   });
+
 	}
 
 	if (SHOULD_RUN(MODE::RE))
 	{
 		logInfo("About to use %s ", re_input_file.c_str());
 
-		CAP<MultiCartesianGrid<3_D>> re_capped_grid{ {dx, nodes}, nCAP };
+		CAP<MultiCartesianGrid<dim>> re_capped_grid{ {dx, nodes}, nCAP };
 		using F1 = Field<AXIS::XYZ, ChemPhysEnvelope<ChemPhysPulse>>;
 		DipoleCoupling<VelocityGauge, F1> re_coupling
 		{
