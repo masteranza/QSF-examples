@@ -1,29 +1,7 @@
 #include "QSF/qsf.h"
-
-#ifdef SIZE
-const ind nodes = SIZE;
-constexpr DIMS dim = 2_D;
-const double Ncharge = 3.23 / sqrt(0.5);
-const double Echarge = -sqrt(0.5);
-const double NEsoft = 0.92;
-const ind nCAP = nodes / 4;
-const double re_dt = 0.1;
-const double omega = 0.06;
-const double F0 = sqrt(2. / 3.) * 0.15;
-std::string re_input{ "im0__aft_xy.psib0" };
-#else
-const ind nodes = 1024;
-constexpr DIMS dim = 3_D;
-//The following gives NEcharge = -3.0 and EEcharge=0.5
-const double Ncharge = 3.0 / sqrt(0.5);
-const double Echarge = -sqrt(0.5);
-const double NEsoft = 1.02;
-const ind nCAP = nodes / 4;
-const double re_dt = 0.1;
-const double omega = 0.06;
-const double F0 = sqrt(2. / 3.) * 0.12;
-std::string re_input{ "im0__aft_xyz.psib0" };
-#endif 
+#include "cxxopts.h"
+#include <filesystem>
+namespace fs = std::filesystem;
 
 constexpr auto opt = OPTIMS::NONE;
 constexpr auto order = 1;
@@ -32,12 +10,55 @@ using SplitType = MultiProductSplit<VTV, order>;
 
 int main(int argc, char* argv[])
 {
-	std::string loc{ TEST ? project_dir : scratch_dir };
-	std::string dir{ TEST ? results_dir : project_name };
-	std::string sep{ "/" };
+	cxxopts::Options options("nitrogen-3e", "3e simulations of nitrogen");
+	options.add_options()
+		("g,gaussian", "Start from gaussian") // a bool parameter
+		("n,nodes", "Number of nodes", cxxopts::value<ind>()->default_value("1024"))
+		("f,field", "Field value", cxxopts::value<double>()->default_value("0.12"))
+		("d,dt", "Set the timedelta", cxxopts::value<double>()->default_value("0.1"))
+		("s,soft", "Set the coulomb softener (epsilon)", cxxopts::value<double>()->default_value("0.92"))
+		("b,border", "Number of border nodes defined as nCAP=nodes/#", cxxopts::value<ind>()->default_value("4"));
 
-	auto re_input_file = loc + sep + dir + sep + re_input;
-	QSF::init(loc.c_str(), dir.c_str(), argc, argv);
+	auto result = options.parse(argc, argv);
+
+#if TEST
+	const ind nodes = result["nodes"].as<ind>();
+	constexpr DIMS dim = 2_D;
+	const double Ncharge = result["gaussian"].as<bool>() ? 0.0 : 3.23 / sqrt(0.5);
+	const double Echarge = result["gaussian"].as<bool>() ? 0.0 : -sqrt(0.5);
+	const double NEsoft = result["soft"].as<double>();
+	const ind nCAP = nodes / result["border"].as<ind>();
+	const double re_dt = result["dt"].as<double>();
+	const double omega = 0.06;
+	const double F0 = sqrt(2. / 3.) * result["field"].as<double>();
+	fs::path loc{ IOUtils::project_dir };
+	fs::path re_output_dir{ IOUtils::results_dir };
+
+#else
+	const ind nodes = 1024;
+	constexpr DIMS dim = 3_D;
+	//The following gives NEcharge = -3.0 and EEcharge=0.5
+	const double Ncharge = 3.0 / sqrt(0.5);
+	const double Echarge = -sqrt(0.5);
+	const double NEsoft = 1.02;
+	const ind nCAP = nodes / 4;
+	const double re_dt = 0.1;
+	const double omega = 0.06;
+	const double F0 = sqrt(2. / 3.) * 0.12;
+	fs::path loc{ std::getenv("SCRATCH") };
+	fs::path re_output_dir{ IOUtils::project_name };
+#endif 
+	re_output_dir = loc / re_output_dir / fs::path("n_" + std::to_string(nodes)) /
+		fs::path("nCAP_" + std::to_string(nCAP)) / fs::path("dt_" + std::to_string(re_dt)) / fs::path("F0_" + std::to_string(F0 / sqrt(2. / 3.)));
+
+	fs::path gs_dir = loc / fs::path("groundstates");
+	fs::path gs_file = fs::path(std::string("nitrogen_") + std::to_string(nodes) + std::string(".psib0"));
+	fs::path re_input_file = gs_dir / gs_file;
+	logWarning("target folder: %s", re_output_dir.c_str());
+	// return 0;
+	QSF::init(re_output_dir, argc, argv);
+	if (!MPI::pID)
+		std::filesystem::create_directories(gs_dir);
 
 	const double dx = 100.0 / 511.0;
 	const double ncycles = 3.0;
@@ -85,10 +106,13 @@ int main(int argc, char* argv[])
 						   });
 					   logUser("wf loaded manually!");
 				   }
-				   if (when == WHEN::AT_END) wf.save("im");
+				   if (when == WHEN::AT_END) wf.save(re_input_file);
 			   });
 
 	}
+
+
+
 
 	if (SHOULD_RUN(MODE::RE))
 	{
@@ -124,24 +148,28 @@ int main(int argc, char* argv[])
 			   {
 				   if (when == WHEN::AT_START)
 				   {
-
-				//    #if TEST
-				// 	   if (MPI::region == 0)
-				// 		   wf.addUsingCoordinateFunction(
-				// 			   [](auto... x) -> cxd
-				// 			   {
-				// 				   double mom = ((x * 8.0) + ...);
-				// 				   return gaussian(2.0, 1.0, x...) * cxd { cos(mom), sin(mom) };
-				// 			   });
-				//    #else 
-					   if (MPI::region == 0)  wf.load(re_input_file);
+					   if (MPI::region == 0)
+					   {
+					   #if TEST 
+						   if (result["gaussian"].as<bool>())
+							   wf.addUsingCoordinateFunction(
+								   [](auto... x) -> cxd
+								   {
+									   double mom = ((x * 8.0) + ...);
+									   return gaussian(2.0, 1.0, x...) * cxd { cos(mom), sin(mom) };
+								   });
+						   else wf.load(re_input_file);
+					   #else
+						   wf.load(re_input_file);
+					   #endif
+					   }
 				//    #endif
 				   }
 
 				   if (when == WHEN::DURING)
 				   {
 				   #if TEST
-					   if (step == 1 || step % halfcycle_steps == 0)
+					   if (step == 1 || step % halfcycle_steps == halfcycle_steps - 1)
 					   {
 						   static int enter = 0;
 						   wf.save("during_" + std::to_string(enter));
