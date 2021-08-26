@@ -8,7 +8,7 @@ using SplitType = MultiProductSplit<VTV, order>;
 
 int main(int argc, char* argv[])
 {
-	QSF::init(project_dir, "Results", argc, argv);
+	QSF::init(IOUtils::project_dir / IOUtils::results_dir, argc, argv);
 	using im_grid_t = CartesianGrid<3_D>; //2_D == DIMS::D2
 	using im_wf_t = Schrodinger::Spin0<im_grid_t, EckhardtSachaInteraction>;
 	using im_outputs_t = BufferedBinaryOutputs<

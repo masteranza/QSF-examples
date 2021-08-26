@@ -1,2 +1,2 @@
 rm -rf build; 
-CC=mpicc CXX=mpic++ cmake . -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -B build; 
+CC=mpicc CXX=mpic++ cmake . $@ -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -B build; 

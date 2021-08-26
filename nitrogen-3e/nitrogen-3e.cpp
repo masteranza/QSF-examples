@@ -21,22 +21,9 @@ int main(int argc, char* argv[])
 
 	auto result = options.parse(argc, argv);
 
-#if TEST
-	const ind nodes = result["nodes"].as<ind>();
-	constexpr DIMS dim = 2_D;
-	const double Ncharge = result["gaussian"].as<bool>() ? 0.0 : 3.23 / sqrt(0.5);
-	const double Echarge = result["gaussian"].as<bool>() ? 0.0 : -sqrt(0.5);
-	const double NEsoft = result["soft"].as<double>();
-	const ind nCAP = nodes / result["border"].as<ind>();
-	const double re_dt = result["dt"].as<double>();
-	const double omega = 0.06;
-	const double F0 = sqrt(2. / 3.) * result["field"].as<double>();
-	fs::path loc{ IOUtils::project_dir };
-	fs::path re_output_dir{ IOUtils::results_dir };
-
-#else
+#ifdef BATCH
 	const ind nodes = 1024;
-	constexpr DIMS dim = 3_D;
+	constexpr DIMS my_dim = 3_D;
 	//The following gives NEcharge = -3.0 and EEcharge=0.5
 	const double Ncharge = 3.0 / sqrt(0.5);
 	const double Echarge = -sqrt(0.5);
@@ -47,9 +34,42 @@ int main(int argc, char* argv[])
 	const double F0 = sqrt(2. / 3.) * 0.12;
 	fs::path loc{ std::getenv("SCRATCH") };
 	fs::path re_output_dir{ IOUtils::project_name };
-#endif 
+
 	re_output_dir = loc / re_output_dir / fs::path("n_" + std::to_string(nodes)) /
 		fs::path("nCAP_" + std::to_string(nCAP)) / fs::path("dt_" + std::to_string(re_dt)) / fs::path("F0_" + std::to_string(F0 / sqrt(2. / 3.)));
+#else
+#ifdef TEST
+	const ind nodes = result["nodes"].as<ind>();
+	constexpr DIMS my_dim = 2_D;
+	const double Ncharge = result["gaussian"].as<bool>() ? 0.0 : 3.23 / sqrt(0.5);
+	const double Echarge = result["gaussian"].as<bool>() ? 0.0 : -sqrt(0.5);
+	const double NEsoft = result["soft"].as<double>();
+	const ind nCAP = nodes / result["border"].as<ind>();
+	const double re_dt = result["dt"].as<double>();
+	const double omega = 0.06;
+	const double F0 = sqrt(2. / 3.) * result["field"].as<double>();
+	fs::path loc{ IOUtils::project_dir };
+	fs::path re_output_dir{ IOUtils::results_dir };
+
+	re_output_dir = loc / re_output_dir / fs::path("n_" + std::to_string(nodes)) /
+		fs::path("nCAP_" + std::to_string(nCAP)) / fs::path("dt_" + std::to_string(re_dt)) / fs::path("F0_" + std::to_string(F0 / sqrt(2. / 3.)));
+#else
+	const ind nodes = result["nodes"].as<ind>();
+	constexpr DIMS my_dim = 3_D;
+	const double Ncharge = 3.0 / sqrt(0.5);
+	const double Echarge = -sqrt(0.5);
+	const double NEsoft = 1.02;
+	const ind nCAP = nodes / result["border"].as<ind>();
+	const double re_dt = result["dt"].as<double>();
+	const double omega = 0.06;
+	const double F0 = sqrt(2. / 3.) * result["field"].as<double>();
+	fs::path loc{ IOUtils::project_dir };
+	fs::path re_output_dir{ IOUtils::results_dir };
+
+	re_output_dir = loc / re_output_dir;
+#endif
+#endif 
+
 
 	fs::path gs_dir = loc / fs::path("groundstates");
 	fs::path gs_file = fs::path(std::string("nitrogen_") + std::to_string(nodes) + std::string(".psib0"));
@@ -74,7 +94,7 @@ int main(int argc, char* argv[])
 
 	if (SHOULD_RUN(MODE::IM)) //if any parameter is passed assume gs
 	{
-		CAP<CartesianGrid<dim>> im_grid{ {dx, nodes}, nCAP };
+		CAP<CartesianGrid<my_dim>> im_grid{ {dx, nodes}, nCAP };
 		auto im_wf = Schrodinger::Spin0{ im_grid, potential };
 		auto im_outputs = BufferedBinaryOutputs<
 			VALUE<Step, Time>
@@ -116,9 +136,9 @@ int main(int argc, char* argv[])
 
 	if (SHOULD_RUN(MODE::RE))
 	{
-		logInfo("About to use %s ", re_input_file.c_str());
+		logUser("About to use %s ", re_input_file.c_str());
 
-		CAP<MultiCartesianGrid<dim>> re_capped_grid{ {dx, nodes}, nCAP };
+		CAP<MultiCartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
 		using F1 = Field<AXIS::XYZ, ChemPhysEnvelope<ChemPhysPulse>>;
 		DipoleCoupling<VelocityGauge, F1> re_coupling
 		{
@@ -150,7 +170,10 @@ int main(int argc, char* argv[])
 				   {
 					   if (MPI::region == 0)
 					   {
-					   #if TEST 
+					   #ifdef BATCH 
+						   wf.load(re_input_file);
+					   #else
+						   logUser("Initing from gaussian");
 						   if (result["gaussian"].as<bool>())
 							   wf.addUsingCoordinateFunction(
 								   [](auto... x) -> cxd
@@ -159,32 +182,28 @@ int main(int argc, char* argv[])
 									   return gaussian(2.0, 1.0, x...) * cxd { cos(mom), sin(mom) };
 								   });
 						   else wf.load(re_input_file);
-					   #else
-						   wf.load(re_input_file);
 					   #endif
 					   }
-				//    #endif
 				   }
 
 				   if (when == WHEN::DURING)
 				   {
-				   #if TEST
+				   #ifdef BATCH
+					   if (step % halfcycle_steps == 0)
+						   wf.save("latest_backup");
+				   #else
 					   if (step == 1 || step % halfcycle_steps == halfcycle_steps - 1)
 					   {
 						   static int enter = 0;
 						   wf.save("during_" + std::to_string(enter));
 						   enter++;
 					   }
-				   #else
-					   if (step % halfcycle_steps == 0)
-						   wf.save("latest_backup");
 				   #endif 
 				   }
-
 				   if (when == WHEN::AT_END)
 				   {
 					   wf.save("final_");
-					   wf.saveIonizedJoined("final_ionized_joined_P_", { dim, REP::P, true, true, true, true, false });
+					   wf.saveIonizedJoined("final_ionized_joined_P_", { my_dim, REP::P, true, true, true, true, false });
 				   }
 			   });
 	}
