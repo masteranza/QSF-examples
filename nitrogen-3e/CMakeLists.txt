@@ -32,6 +32,10 @@ add_compile_definitions(PROJNAME=${PROJECT_NAME} DEBUG=223)
 # add_compile_options(
 # PUBLIC -march=native -O3 -ffast-math -Wno-unknown-pragmas -Wno-unused-parameter -Wno-gnu-zero-variadic-macro-arguments -Wno-pedantic) 
 
+# target_compile_options(${PROJECT_NAME}-re PUBLIC -march=native -O0 -g) 
+# target_compile_options(${PROJECT_NAME}-im PUBLIC -march=native -O0 -g) 
+# target_compile_options(${PROJECT_NAME} PUBLIC -march=native -O0 -g) 
+
 target_compile_options(${PROJECT_NAME}-im PUBLIC -march=native -O3 -ffast-math) 
 target_compile_options(${PROJECT_NAME}-re PUBLIC -march=native -O3 -ffast-math) 
 target_compile_options(${PROJECT_NAME} PUBLIC -march=native -O3 -ffast-math) 

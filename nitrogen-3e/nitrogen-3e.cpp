@@ -32,7 +32,7 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		("d,delay", "pulse delay [cycles]",
 		 cxxopts::value<double>()->default_value("0.0"))
 		("c,cycles", "Cycles [number]",
-		 cxxopts::value<double>()->default_value("0.0"));
+		 cxxopts::value<double>()->default_value("3.0")->implicit_value("3.0"));
 
 	return options.parse(argc, argv);
 }
@@ -153,16 +153,18 @@ int main(const int argc, char* argv[])
 			VALUE<Step, Time>
 			, VALUE<F1>
 			// , AVG<Identity>
-			, AVG<PotentialEnergy>
-			, AVG<KineticEnergy>
+			// , AVG<PotentialEnergy>
+			// , AVG<KineticEnergy>
 			// PROJ<EIGENSTATES, Identity>,
 			// , AVG<DERIVATIVE<0, PotentialEnergy>>
 			// , FLUX<BOX<3>>
+			, ZOA_FLUX_3D
 			, VALUE<ETA>
 		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
 		auto re_wf = Schrodinger::Spin0{ re_capped_grid, potential, re_coupling };
 		auto p2 = SplitPropagator<MODE::RE, SplitType, decltype(re_wf)>{ {.dt = re_dt}, std::move(re_wf) };
+
 		if (testing)
 			p2.run(re_outputs, [=](const WHEN when, const ind step, const uind pass, auto& wf)
 				   {
@@ -205,7 +207,7 @@ int main(const int argc, char* argv[])
 					   }
 					   if (when == WHEN::AT_END)
 					   {
-						   wf.save("final_");
+						   wf.save("latest_backup");
 						   wf.saveIonizedJoined("final_ionized_joined_P_", { my_dim, REP::P, true, true, true, true, false });
 					   }
 				   });
