@@ -24,4 +24,4 @@ module load plgrid/tools/cmake plgrid/libs/fftw/3.3.9 plgrid/libs/mkl/2021.3.0 p
 
 cd $SLURM_SUBMIT_DIR
 
-mpiexec ./qsf-nitrogen-3e-im -c
+mpiexec ./qsf-nitrogen-3e-im -r

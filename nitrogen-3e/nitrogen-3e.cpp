@@ -9,27 +9,29 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 {
 	options.add_options()
 		("help", "Print help")
-		("n,nodes", "Number of nodes (default: 1024)",
+		("n,nodes", "Number of nodes [positive integer]",
 		 cxxopts::value<ind>()->default_value("1024"))
-		("t,dt", "Set the timedelta",
+		("t,dt", "Set the timedelta [a.u.]",
 		 cxxopts::value<double>()->default_value("0.1"))
-		("s,soft", "Set the coulomb softener (epsilon)",
+		("s,soft", "Set the coulomb softener (epsilon) [length^2]=[a.u.^2]",
 		 cxxopts::value<double>()->default_value("0.92"))
-		("b,border", "Number of border nodes defined as nCAP=nodes/#",
+		("b,border", "Number of border nodes defined as nCAP=nodes/# [positive integer]",
 		 cxxopts::value<ind>()->default_value("4"));
 
 	options.add_options("Environment")
-		("c,cluster", "Running on cluster (AGH Prometeusz) (default: false)");
+		("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)");
 
 	options.add_options("Testing")
 		("g,gaussian", "Start from gaussian (default: false)");
 
 	options.add_options("Laser")
-		("f,field", "Field value (default: 0.12)",
+		("f,field", "Field strength [a.u] value",
 		 cxxopts::value<double>()->default_value("0.12"))
-		("p,phase", "Phase value (default: 0.0)",
+		("p,phase", "Carrier Envelope Phase (CEP) [pi] value",
 		 cxxopts::value<double>()->default_value("0.0"))
-		("d,delay", "Delay (default: 0)",
+		("d,delay", "pulse delay [cycles]",
+		 cxxopts::value<double>()->default_value("0.0"))
+		("c,cycles", "Cycles [number]",
 		 cxxopts::value<double>()->default_value("0.0"));
 
 	return options.parse(argc, argv);
@@ -43,7 +45,7 @@ using SplitType = MultiProductSplit<VTV, order>;
 int main(const int argc, char* argv[])
 {
 	auto result = getOpts(argc, argv);
-	const bool cluster = result["cluster"].as<bool>();
+	const bool remote = result["remote"].as<bool>();
 	const bool testing = result["gaussian"].as<bool>();
 	const ind nodes = result["nodes"].as<ind>();
 	constexpr DIMS my_dim = 3_D;
@@ -54,11 +56,12 @@ int main(const int argc, char* argv[])
 	const double re_dt = result["dt"].as<double>();
 	const double omega = 0.06;
 	const double delay_in_cycles = result["delay"].as<double>();
+	const double ncycles = result["cycles"].as<double>();
 	const double phase_in_pi_units = result["phase"].as<double>();
 	const double F0 = sqrt(2. / 3.) * result["field"].as<double>();
 
-	fs::path loc{ cluster ? std::getenv("SCRATCH") : IOUtils::project_dir };
-	fs::path re_output_dir{ cluster ? IOUtils::project_name : IOUtils::results_dir };
+	fs::path loc{ remote ? std::getenv("SCRATCH") : IOUtils::project_dir };
+	fs::path re_output_dir{ remote ? IOUtils::project_name : IOUtils::results_dir };
 	re_output_dir = loc / re_output_dir / (testing ? "test" :
 										   fs::path("F0_" + std::to_string(result["field"].as<double>()))
 										   / fs::path("phase_" + std::to_string(phase_in_pi_units) + "pi"));
@@ -69,20 +72,18 @@ int main(const int argc, char* argv[])
 	fs::path re_input_file = gs_dir / gs_file;
 
 	QSF::init(re_output_dir, argc, argv);
-	logImportant("cluster: %d testing: %d", cluster, testing);
-	if (!MPI::pID)
+	logImportant("remote: %d testing: %d", remote, testing);
+	if (result.count("help"))
 	{
-		if (result.count("help"))
-		{
-			std::cout << options.help({ "", "Testing", "Laser" }) << std::endl;
-			QSF::finalize();
-			exit(0);
-		}
-		std::filesystem::create_directories(gs_dir);
+		if (!MPI::pID)
+			std::cout << options.help({ "","Environment", "Testing", "Laser" }) << std::endl;
+		QSF::finalize();
+		exit(0);
 	}
+	if (!MPI::pID) std::filesystem::create_directories(gs_dir);
+
 
 	const double dx = 100.0 / 511.0;
-	const double ncycles = 3.0;
 	const int log_interval = 20;
 
 	const ind halfcycle_steps = round(pi / omega / re_dt);
