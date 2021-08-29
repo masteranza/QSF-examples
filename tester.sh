@@ -16,7 +16,7 @@ do
    do
       for ds in "${deltas[@]}"
       do
-         mpirun --host localhost:4 ./qsf-nitrogen-3e-re -n ${ns} -b ${bs} -d ${ds} -f 0.4
+         mpirun --host localhost:4 ./qsf-nitrogen-3e-re -n ${ns} -b ${bs} -t ${ds} -f 0.4
          # for fs in "${fields[@]}"
          # do
          #    echo "running ./qsf-nitrogen-3e-re -n ${ns} -b ${bs} -d ${ds} -f ${fs}"
