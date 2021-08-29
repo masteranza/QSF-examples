@@ -101,7 +101,7 @@ int main(const int argc, char* argv[])
 		auto im_outputs = BufferedBinaryOutputs<
 			VALUE<Step, Time>
 			, OPERATION<Orthogonalize>
-			, OPERATION<AntiSymmetrize>
+			, OPERATION<AntiSymmetrize<3_D>>
 			, OPERATION<Normalize>
 			, AVG<Identity>
 			, AVG<PotentialEnergy>
@@ -124,7 +124,7 @@ int main(const int argc, char* argv[])
 					   wf.addUsingCoordinateFunction(
 						   [](auto... x) -> cxd
 						   {
-							   return cxd{ (x*...*1.0) * gaussian(0.0, 3.0, x...), 0 };
+							   return cxd{ gaussian(0.0, 3.0, x...), 0 };
 						   });
 					   logUser("wf loaded manually!");
 				   }
@@ -153,10 +153,11 @@ int main(const int argc, char* argv[])
 			VALUE<Step, Time>
 			, VALUE<F1>
 			// , AVG<Identity>
-			// , AVG<PotentialEnergy>
+			, AVG<PotentialEnergy>
+			, AVG<KineticEnergy>
 			// PROJ<EIGENSTATES, Identity>,
 			// , AVG<DERIVATIVE<0, PotentialEnergy>>
-			// FLUX<BOX<3>>
+			// , FLUX<BOX<3>>
 			, VALUE<ETA>
 		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
