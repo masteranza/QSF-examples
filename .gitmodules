@@ -1,3 +1,6 @@
 [submodule "QSF"]
 	path = QSF
 	url = https://github.com/masteranza/QSF.git
+[submodule "extern/cxxopts"]
+	path = extern/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
