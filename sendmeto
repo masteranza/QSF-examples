@@ -7,83 +7,24 @@ PINK=$(tput setaf 5)
 BLACK=$(tput setaf 0)
 NC=$(tput sgr0)
 INFC="${YELLOW}"
+set -e
 
-upload=0
-run=0
-view=0
-download=0
-clean=0
-# Used to kill processes by $user
-kill=0
-# Used to develop QPROP to commits changes in project and it's submodules
-# to print the names of all submodules use
-# git config --file .gitmodules --get-regexp path | awk '{ print $2 }'
-# or
-# git submodule--helper list
-gitrefresh=0
-# possible options u, ur, urv, r, v, d, c
-proj=""
-index=1
-dryrun=0
-declare -i index
 user=`whoami`
 host="$1"
-# address="$user@$host"
 address="$host"
+# address="$user@$host"
 sourceDir="./"
 targetDir="~"
-CURRENT=`pwd`
-BASENAME=`basename "$CURRENT"`
-resultsDir="~/Results"
-resultsLocalDir=~/Results
-gitrepo="git@github.com:masteranza/QS.git"
-err_str="${RED}Error:${INFC}"
-suc_str="${GREEN}Success!${NC}"
-err_arg_order="$err_str Arguments passed to 'remote' should always go first! (before those to run or im/re/isurfv/tsurff)"
-conf='config' #Default config
+CURRENT_DIR=`pwd`
+BASENAME=`basename "$CURRENT_DIR"`
+# set -x # Used to preview all the commands called (good for DEBUG)
 
-# Used to preview all the commands called (good for DEBUG)
-# set -x
-# Nice exit messages
-exit_trap() {
-        local lc="$BASH_COMMAND" rc=$?
-        if [[ $rc -eq 0 ]]; then
-                echo "$suc_str"
-        else
-                echo "$err_str Command [$lc] exited with code [$rc]"
-        fi
-        if [[ $rc -eq 12 ]]; then
-                custompath="/home/$user"
-                read -p "${PINK}Looks like rsync can't be found on $host. Attempt auto-install rsync locally on server? Press ENTER to continue.${NC}"
-                ssh $address "wget https://download.samba.org/pub/rsync/src/rsync-3.2.3.tar.gz
-                        tar -xf rsync-3.2.3.tar.gz
-                        cd rsync-3.2.3/
-                        ./configure --disable-openssl --disable-xxhash --disable-zstd --disable-lz4 --prefix=$custompath
-                        make
-                        make install
-                        rm -rf ../rsync-3.2.3
-                        rm -rf ../rsync-3.2.3.tar.gz
-                        "
-
-                echo "${INFC}Install completed.${NC}"
-                custompath="--rsync-path=$custompath/bin/rsync"
-                echo $custompath >"conf/${host}.conf"
-        fi
-        if [[ $rc -eq 23 ]]; then
-                if [[ "$experiment" != "" ]]; then
-                        echo "$err_str experiment directory ${GREEN}$experiment${INFC} not found.${NC}"
-                fi
-        fi
-}
-
-trap exit_trap EXIT
-set -e
-BASENAME="${BASENAME}"
+BASENAME="${BASENAME}$2"
 rsync -avhr --dry-run --exclude='.*' --include='/' --exclude='**/Results' --exclude='**/groundstates' --exclude='build' --exclude='deprecated' --exclude='qsf-*' --exclude='*.png' --exclude='*.nb' --exclude='*.dat' --exclude='*.log' $sourceDir $address:$targetDir/$BASENAME
 #Ask
-read -p "${PINK}This  will be ${GREEN}uploaded${PINK} to ${GREEN}$host${PINK}. Press ENTER to continue.${NC}"
+read -p "${PINK}Above will be ${GREEN}uploaded${PINK} to ${GREEN}$host:$targetDir/$BASENAME${PINK}. Press ENTER to continue.${NC}"
 #Upload
 rsync -avhr --exclude='.*' --include='/' --exclude='**/Results' --exclude='**/groundstates' --exclude='build' --exclude='deprecated' --exclude='qsf-*' --exclude='*.png' --exclude='*.nb' --exclude='*.dat' --exclude='*.log' $sourceDir $address:$targetDir/$BASENAME
-ssh -t $address "cd $targetDir/$BASENAME ; bash --login"
+ssh -t $address "cd $targetDir/$BASENAME; bash --login"
 
 exit 0;
