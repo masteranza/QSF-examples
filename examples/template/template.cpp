@@ -1,5 +1,4 @@
-#include "QSF/qsf.h"
-// #include "QSF/fluxes/borders.h"
+#include "QSF.h"
 
 constexpr auto opt = OPTIMS::NONE;
 constexpr auto order = 1;
@@ -9,12 +8,12 @@ using SplitType = MultiProductSplit<VTV, order>;
 int main(int argc, char* argv[])
 {
 	QSF::init(IOUtils::project_dir / IOUtils::results_dir, argc, argv);
-	using im_grid_t = CartesianGrid<3_D>; //2_D == DIMS::D2
-	using im_wf_t = Schrodinger::Spin0<im_grid_t, EckhardtSachaInteraction>;
+	using im_grid_t = CartesianGrid<2_D>; //2_D == DIMS::D2
+	using im_wf_t = Schrodinger::Spin0<im_grid_t, CoulombInteraction>;
 	using im_outputs_t = BufferedBinaryOutputs<
 		VALUE<Step, Time>
-		, OPERATION<Orthogonalize>
-		, OPERATION<Symmetrize>
+		// , OPERATION<Orthogonalize>
+		// , OPERATION<Symmetrize>
 		, OPERATION<Normalize>
 		, AVG<Identity>
 		, AVG<PotentialEnergy>
@@ -26,25 +25,25 @@ int main(int argc, char* argv[])
 	std::string im_output_name = "./Results/im0ELECeDIMd__aft_xyz.psib0";
 
 	{
-		// auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
-		// p1.run<im_outputs_t>(
-		// 	[&](const WHEN when, const ind step, const uind pass, auto& wf)
-		// 	{
-		// 		if (when == WHEN::AT_START)
-		// 		{
-		// 			wf.addUsingCoordinateFunction(
-		// 				[](auto... x) -> cxd
-		// 				{
-		// 					// std::size_t i = 0;
-		// 					// double res = 0.0;
-		// 					// ((res = x * 1.2, true) || ...); //select first
-		// 					// ((i++ == 0 ? (res = x * 0.0, true) : false) || ...); //select i-th
-		// 					// return cxd{ cos(res) * gaussian(0.0, 2.0, x...), sin(res) };
-		// 					return cxd{ gaussian(0.0, 2.0, x...), 0 };
-		// 				});
-		// 			logUser("wf loaded manually!");
+		auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
+		p1.run<im_outputs_t>(
+			[&](const WHEN when, const ind step, const uind pass, auto& wf)
+			{
+				if (when == WHEN::AT_START)
+				{
+					wf.addUsingCoordinateFunction(
+						[](auto... x) -> cxd
+						{
+							// std::size_t i = 0;
+							// double res = 0.0;
+							// ((res = x * 1.2, true) || ...); //select first
+							// ((i++ == 0 ? (res = x * 0.0, true) : false) || ...); //select i-th
+							// return cxd{ cos(res) * gaussian(0.0, 2.0, x...), sin(res) };
+							return cxd{ gaussian(0.0, 2.0, x...), 0 };
+						});
+					logUser("wf loaded manually!");
 		// 			// wf.save("ati0_");
-		// 		}
+				}
 		// 		if (when == WHEN::DURING)
 		// 		{
 		// 			// if (step == 1)wf.save("ati1_");
@@ -57,20 +56,11 @@ int main(int argc, char* argv[])
 		// 		}
 		// 		if (when == WHEN::AT_END)
 		// 			im_output_name = wf.save("im");
-		// 	});
+
+			});
 	}
-
-	// logInfo("Next computation! %s\n", im_output_name.c_str());
-
-	// MultiCartesianGrid<3_D, CAP> re_grid{ {.dx = {0.5,0.5,0.5}, .n = {32,32,32} } };
-	// CAP<MultiCartesianGrid<3_D>> re_capped_grid{ {0.393700787401575, 128}, 8 };
-	CAP<MultiCartesianGrid<3_D>> re_capped_grid{ {0.196850393700788, 256}, 64 };
-	// CAP<MultiCartesianGrid<2_D>> re_capped_grid{ {0.3, 64}, 16 };
-	// CartesianGrid<2_D> re_capped_grid{ 0.5, 16 };
-	// CoulombInteraction re_potential{ {.Ncharge = 1, .Echarge = -1, .Nsoft = 1, .Esoft = 0 } };
-	// CoulombInteraction re_potential{ {.Ncharge = 0, .Echarge = 0, .Nsoft = 1, .Esoft = 1 } };
-	EckhardtSachaInteraction re_potential{ {.Ncharge = 3, .Echarge = -1, .Nsoft = 1.830, .Esoft = 1.830 } };
-	// CoulombInteraction re_potential{ {.Ncharge = 3.0, .Echarge = -1, .Nsoft = 1.830, .Esoft = 1.830 } };
+	CAP<CartesianGrid<2_D>> re_capped_grid{ {0.2, 256}, 64 };
+	CoulombInteraction re_potential{ {.Ncharge = 1, .Echarge = -1, .Nsoft = 0.0, .Esoft = 0.0 } };
 
 	using F1 = Field<AXIS::XYZ, SinPulse>;
 	// using F2 = Field<AXIS::Y, GaussianEnvelope<SinPulse>>;

@@ -1,146 +1,134 @@
-#include "QSF/qsf.h"
-#include "cxxopts.h"
-
-
-cxxopts::Options options(
-	"nitrogen-3e",
-	"This program calculates momenta distributions of nitrogen in reduced-dim Eckhardt-Sacha model");
+#include "QSF.h"
 
 constexpr auto opt = OPTIMS::NONE;
 constexpr auto order = 1;
 using VTV = Split3Base<REP::X, REP::P, REP::X>;
 using SplitType = MultiProductSplit<VTV, order>;
 
-
 int main(int argc, char* argv[])
 {
-	options.add_options()
-		("b,batch", "Whether we run on cluster (changes target directories)",
-		 cxxopts::value<bool>()->default_value("false"))
-		("r,restore", "Whether to continue from the last backup",
-		 cxxopts::value<bool>()->default_value("false"))
-		("n,nodes", "Set number of nodes manually",
-		 cxxopts::value<ind>())
-		("t,dt", "Set number timestep manually",
-		 cxxopts::value<double>())
-		("f,field", "Set number field strength manually",
-		 cxxopts::value<double>())
-		("i,input", "File name of the initial state for real-time propagation",
-		 cxxopts::value<std::string>()->default_value("im0__aft_xyz.psib0"))
-		("h,help", "Print usage");
-	auto result = options.parse(argc, argv);
-	if (result.count("help"))
+	QSF::init(IOUtils::project_dir / IOUtils::results_dir, argc, argv);
+	using im_grid_t = CartesianGrid<2_D>; //2_D == DIMS::D2
+	using im_wf_t = Schrodinger::Spin0<im_grid_t, CoulombInteraction>;
+	using im_outputs_t = BufferedBinaryOutputs<
+		VALUE<Step, Time>
+		// , OPERATION<Orthogonalize>
+		// , OPERATION<Symmetrize>
+		, OPERATION<Normalize>
+		, AVG<Identity>
+		, AVG<PotentialEnergy>
+		, AVG<KineticEnergy>
+		, SUM<AVG<PotentialEnergy>, AVG<KineticEnergy>>
+		, CHANGE<SUM<AVG<PotentialEnergy>, AVG<KineticEnergy>>>
+	>;
+
+	std::string im_output_name = "./Results/im0ELECeDIMd__aft_xyz.psib0";
+
 	{
-		logInfo("%s", options.help().c_str());
-		exit(0);
+		auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
+		p1.run<im_outputs_t>(
+			[&](const WHEN when, const ind step, const uind pass, auto& wf)
+			{
+				if (when == WHEN::AT_START)
+				{
+					wf.addUsingCoordinateFunction(
+						[](auto... x) -> cxd
+						{
+							// std::size_t i = 0;
+							// double res = 0.0;
+							// ((res = x * 1.2, true) || ...); //select first
+							// ((i++ == 0 ? (res = x * 0.0, true) : false) || ...); //select i-th
+							// return cxd{ cos(res) * gaussian(0.0, 2.0, x...), sin(res) };
+							return cxd{ gaussian(0.0, 2.0, x...), 0 };
+						});
+					logUser("wf loaded manually!");
+		// 			// wf.save("ati0_");
+				}
+		// 		if (when == WHEN::DURING)
+		// 		{
+		// 			// if (step == 1)wf.save("ati1_");
+		// 			// if (step == 50)wf.save("ati50_");
+		// 			// if (step == 100)wf.save("ati100_");
+		// 			// if (step == 150)wf.save("ati150_");
+		// 			// if (step == 200)wf.save("ati200_");
+		// 			// if (step == 1000)wf.save("ati1000_");
+		// 			// if (step == 10000)wf.save("ati10000_");
+		// 		}
+		// 		if (when == WHEN::AT_END)
+		// 			im_output_name = wf.save("im");
+
+			});
 	}
+	CAP<CartesianGrid<2_D>> re_capped_grid{ {0.2, 256}, 64 };
+	CoulombInteraction re_potential{ {.Ncharge = 1, .Echarge = -1, .Nsoft = 0.0, .Esoft = 0.0 } };
 
-	bool batch = result["batch"].as<bool>();
-	std::string loc{ batch ? scratch_dir : project_dir };
-	std::string dir{ batch ? project_name : results_dir };
-	std::string sep{ "/" };
-
-	QSF::init(loc.c_str(), dir.c_str(), argc, argv);
-
-	auto re_input_file = loc + sep + dir + sep + result["input"].as<std::string>();
-	const ind nodes = result.count("nodes") ? result["nodes"].as<ind>() : 1024;
-	const ind nCAP = nodes / 4;
-	const double dx = 100.0 / 511.0;
-	const double ncycles = 3.0;
-	const double omega = 0.06;
-	const double F0 = sqrt(2. / 3.) * (result.count("field") ? result["field"].as<double>() : 0.12);// / omega;
-	const double re_dt = result.count("dt") ? result["dt"].as<double>() : 0.05; //delta step used in real time prop.
-	const int log_interval = 20;
-
-	const ind halfcycle_steps = round(pi / omega / re_dt);
-	//The following gives NEcharge = -3.0 and EEcharge=0.5
-	EckhardtSachaInteraction potential{ {
-		.Ncharge = 3.0 / sqrt(0.5),
-		.Echarge = -sqrt(0.5),
-		.Nsoft = 1.02,
-		.Esoft = 1.02 } };
-
-	if (SHOULD_RUN(MODE::IM)) //if any parameter is passed assume gs
+	using F1 = Field<AXIS::XYZ, SinPulse>;
+	// using F2 = Field<AXIS::Y, GaussianEnvelope<SinPulse>>;
+	DipoleCoupling<VelocityGauge, F1> re_coupling
 	{
-		CAP<CartesianGrid<3_D>> im_grid{ {dx, nodes}, nCAP };
-		auto im_wf = Schrodinger::Spin0{ im_grid, potential };
-		auto im_outputs = BufferedBinaryOutputs<
-			VALUE<Step, Time>
-			, OPERATION<Orthogonalize>
-			, OPERATION<AntiSymmetrize>
-			, OPERATION<Normalize>
-			, AVG<Identity>
-			, AVG<PotentialEnergy>
-			, AVG<KineticEnergy>
-			, ENERGY_TOTAL
-			, ENERGY_DIFFERENCE
-		>{ {.comp_interval = 1, .log_interval = 20} };
+		SinPulse{{
+			// .F0 = .2, .omega = 0.06,
+			.F0 = .2 * sqrt(2. / 3.), .omega = 0.06,
+			.ncycles = 1.0, .FWHM_percent = 0.9,
+			.phase_in_pi_units = 0, .delay_in_cycles = 0
+			}}
+		// ,GaussianEnvelope<SinPulse>{ {
+			// .F0 = 0.1, .omega = 0.06,
+			// .ncycles = 4.0, .FWHM_percent = 0.5,
+			// .phase_in_pi_units = 0, .delay_in_cycles = 0
+			// }}
+	};
 
-		auto p1 = SplitPropagator<MODE::IM, SplitType, decltype(im_wf)>
-		{
-			{.dt = 0.3, .max_steps = 1000000, .state_accuracy = 10E-15},
-			std::move(im_wf)
-		};
+	auto re_outputs = BufferedBinaryOutputs <
+		VALUE<Step, Time>
+		, VALUE<F1>
+	   // , AVG<Identity>
+	   // , AVG<PotentialEnergy>
+   // , PROJ<EIGENSTATES, Identity>
+	   // , AVG<DERIVATIVE<0, PotentialEnergy>>
+	   // , FLUX<BOX<3>>
+	   // AUXILLARY_VALUES<ETAOperator>>; /* Estimated end of computation */
+	>{ {.comp_interval = 1, .log_interval = 20} };
 
-		p1.run(im_outputs,
-			   [&](const WHEN when, const ind step, const uind pass, auto& wf)
+	auto re_wf = Schrodinger::Spin0{ re_capped_grid, re_potential, re_coupling };
+	auto p2 = SplitPropagator<MODE::RE, SplitType, decltype(re_wf)>{ {.dt = 0.3}, std::move(re_wf) };
+	p2.run(re_outputs, [=](const WHEN when, const ind step, const uind pass, auto& wf)
+		   {
+			   if (when == WHEN::AT_START)
 			   {
-				   if (when == WHEN::AT_START)
-				   {
+				   if (MPI::region == 0)
+					//    wf.load(im_output_name);
 					   wf.addUsingCoordinateFunction(
 						   [](auto... x) -> cxd
 						   {
-							   return cxd{ (x*...*1.0) * gaussian(0.0, 3.0, x...), 0 };
+							//    std::size_t i = 2;
+							//    double res = 0.0;
+							//    ((res = x * 2.0, true) || ...);
+							//    ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
+							//    return sin(((x * 1.9) + ...));
+							//    return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
+							//    return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+							   return gaussian(8.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
 						   });
-					   logUser("wf loaded manually!");
-				   }
-				   if (when == WHEN::AT_END) wf.save("im");
-			   });
-	}
 
-	if (SHOULD_RUN(MODE::RE))
-	{
-		logInfo("About to use %s ", re_input_file.c_str());
-
-		CAP<MultiCartesianGrid<3_D>> re_capped_grid{ {dx, nodes}, nCAP };
-		using F1 = Field<AXIS::XYZ, ChemPhysEnvelope<ChemPhysPulse>>;
-		DipoleCoupling<VelocityGauge, F1> re_coupling
-		{
-			ChemPhysEnvelope<ChemPhysPulse>{ {
-				.F0 = F0,
-				.omega = omega,
-				.ncycles = ncycles,
-				.phase_in_pi_units = 0,
-				.delay_in_cycles = 0}}
-		};
-
-		auto re_outputs = BufferedBinaryOutputs <
-			VALUE<Step, Time>
-			, VALUE<F1>
-		//    , AVG<Identity>, AVG<PotentialEnergy>, PROJ<EIGENSTATES, Identity>, AVG<DERIVATIVE<0, PotentialEnergy>>, FLUX<BOX<3>>
-			, VALUE<ETA>
-		>{ {.comp_interval = 1, .log_interval = log_interval} };
-
-		auto re_wf = Schrodinger::Spin0{ re_capped_grid, potential, re_coupling };
-		auto p2 = SplitPropagator<MODE::RE, SplitType, decltype(re_wf)>{ {.dt = re_dt}, std::move(re_wf) };
-		p2.run(re_outputs,
-			   [=](const WHEN when, const ind step, const uind pass, auto& wf)
+				   logUser("wf loaded manually!");
+				   wf.save("at0_");
+			   }
+			   if (when == WHEN::DURING)
 			   {
-				   if (when == WHEN::AT_START)
-					   if (MPI::region == 0) wf.load(re_input_file);
-
-				   if (when == WHEN::DURING)
-					   if (step % halfcycle_steps == 0)
-						   wf.save("latest_backup");
-
-				   if (when == WHEN::AT_END)
-				   {
-					   wf.save("final_");
-					//    wf.saveJoined("final_joined_P_", { 3_D, REP::P, true, true, true, true, false });
-					   wf.saveIonizedJoined("final_ionized_joined_P_", { 3_D, REP::P, true, true, true, true, false });
-				   }
-			   });
-	}
+				   if (step == 1)wf.save("at1_");
+				//    if (step == 2)wf.save("at2_");
+				   if (step == 50)wf.save("at50_");
+				   if (step == 100)wf.save("at100_");
+				   if (step == 150)wf.save("at150_");
+				   if (step == 200)wf.save("at200_");
+				   if (step == 250)wf.save("at250_");
+				   if (step == 300)wf.save("at300_");
+				//    if (step == 350)wf.save("at350_");
+			   }
+			   if (when == WHEN::AT_END)
+				   wf.save("final");
+		   });
 	QSF::finalize();
 }
 

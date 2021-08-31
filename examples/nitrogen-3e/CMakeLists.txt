@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
 
 
 
+
 target_compile_definitions(${PROJECT_NAME}-im PRIVATE MODES_ENABLED=MODE::IM)
 target_compile_definitions(${PROJECT_NAME}-re PRIVATE MODES_ENABLED=MODE::RE)
 add_compile_definitions(PROJNAME=${PROJECT_NAME} DEBUG=223)

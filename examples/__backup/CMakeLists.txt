@@ -1,35 +1,20 @@
-#Designed to be run with:
-#CC=gcc-11 CXX=g++-11 cmake . -B project-name/build; cmake --build project-name/build --target install
 cmake_minimum_required(VERSION 3.8)
+project(template LANGUAGES CXX)
 
-project(QSF-examples)
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_RULE_MESSAGES OFF)
 
-# Prepare the library
-add_subdirectory(QSF)
-add_subdirectory(extern/cxxopts)
-# Compile example projects
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(colors)
-define_colors()
-
-if (DEFINED PROJECT)
-    message(STATUS "${Blue}Only project [${PROJECT}] will be configured${ColourReset}")
-    add_subdirectory(examples/${PROJECT})
-else()
-    message(STATUS "${Blue}ALL examples will be configured${ColourReset}")
-    add_subdirectory(examples/template)
-    add_subdirectory(examples/nitrogen-3e)
-endif()
+add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
+target_compile_definitions(${PROJECT_NAME} PUBLIC DEBUG=223)
+target_compile_options(${PROJECT_NAME} PUBLIC -march=native -O3 -ffast-math) 
+#-W -Wall -Wextra -pedantic -Wno-unknown-pragmas -Wno-unused-parameter -Wno-gnu-zero-variadic-macro-arguments -Wno-pedantic
 
 
+target_link_libraries(${PROJECT_NAME} PUBLIC QSF)
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
 
-
-
-
-
-
-
-
+install(TARGETS ${PROJECT_NAME} 
+DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
 
 # set(CMAKE_FIND_FRAMEWORK NEVER)
@@ -37,7 +22,7 @@ endif()
 # set(CMAKE_FIND_USE_CMAKE_SYSTEM_PATH FALSE)
 # set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 # set(CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}")
-# project(template LANGUAGES CXX)
+
 
 # set(default_build_type "Release")
 # if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -63,11 +48,11 @@ endif()
 # set_target_properties(new_thing PROPERTIES SUFFIX ".so.1")
 # set_target_properties(new_thing PROPERTIES PREFIX "" SUFFIX ".so.${NEW_THING_VER}" )
 # set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
-# add_executable(${PROJECT_NAME} ${PROJECT_NAME}/${PROJECT_NAME}.cpp)
+
 # find_library (FFTW_LIBRARIES NAMES fftw3)
 # target_link_libraries(${PROJECT_NAME} PUBLIC ${FFTW_LIBRARIES}) 
 
-
+# add_subdirectory(QSF)
 
 # set(CMAKE_OSX_SYSROOT /opt/homebrew/)
 # set(CMAKE_SHARED_LINKER_FLAGS -lfftw3_mpi,-lfftw3)
@@ -103,21 +88,13 @@ endif()
                 # OUTPUT_STRIP_TRAILING_WHITESPACE)
 # include(CheckCXXCompilerFlag)
 # add_compile_options(-march=native)
-# target_compile_definitions(${PROJECT_NAME}
-#   PRIVATE
-    # DIM=3
-    # DEBUG=1
-#     USE_SIMD=1
-#     INTERNAL_MACRO
-#   INTERFACE
-#     ONLY_CONSUMERS_CAN_SEE_THIS_DEFINE=42
-# )
+
 # if(ENABLE_MPI)
 # set(CMAKE_LIBRARY_PATH /opt/homebrew/lib)
     # target_link_libraries(MyTarget PUBLIC MPI::MPI_CXX)
 # endif()
 # target_link_libraries(QSF INTERFACE ${FFTW_LIBRARIES})
-# target_link_libraries(${PROJECT_NAME} PUBLIC QSF)
+
 # target_compile_options(${PROJECT_NAME} PRIVATE -lfftw -lm)
 # include(GNUInstallDirs)
 # set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -142,7 +119,7 @@ endif()
 # target_compile_options(${PROJECT_NAME} PUBLIC -lm -lmpi -lfftw3_mpi -lfftw3)
 # target_link_libraries(${PROJECT_NAME} PUBLIC fftw3)
 # target_link_libraries(${PROJECT_NAME} PUBLIC FFTW3)
-# install(TARGETS ${PROJECT_NAME} DESTINATION  ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME})
+
 
 
 

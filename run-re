@@ -23,7 +23,7 @@ fi
 # [ "$1" == "clean" ] && exit 0
 # [ "$1" == "clean1d" ] && exit 0
 
-cd $proj
+cd examples/$proj
 
 # module load intelMPI
 # [ $(uname) = "Linux" ] && source /opt/intel/Compiler/19.0/bin/compilervars.sh arch intel64
