@@ -1,9 +1,5 @@
-#Designed to be run with:
-#CC=gcc-11 CXX=g++-11 cmake . -B project-name/build; cmake --build project-name/build --target install
 cmake_minimum_required(VERSION 3.8)
-
 project(QSF-examples)
-
 # Prepare the library
 add_subdirectory(QSF)
 add_subdirectory(extern/cxxopts)
@@ -12,22 +8,32 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(colors)
 define_colors()
 
-if (DEFINED PROJECT)
-    message(STATUS "${Blue}Only project [${PROJECT}] will be configured${ColourReset}")
-    add_subdirectory(examples/${PROJECT})
-else()
-    message(STATUS "${Blue}ALL examples will be configured${ColourReset}")
-    add_subdirectory(examples/template)
-    add_subdirectory(examples/nitrogen-3e)
-endif()
 
 
 
+macro(Builder mod flags)
+    get_filename_component(prj ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+    string(REPLACE " " "_" prj ${prj})
+    cmake_minimum_required(VERSION 3.8)
+    project("${prj}${mod}" LANGUAGES CXX)
 
+    set(CMAKE_VERBOSE_MAKEFILE ON)
+    set(CMAKE_RULE_MESSAGES OFF)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(CMAKE_BUILD_TYPE Release)
+    # add_compile_definitions(PROJNAME=${prj} DEBUG=223)
+    # im + re version
+    add_executable(${prj}${mod} "${prj}.cpp")
+    target_compile_options(${prj}${mod} PUBLIC -march=native -O3 -ffast-math) 
+    target_link_libraries(${prj}${mod} PUBLIC cxxopts::cxxopts)
+    target_link_libraries(${prj}${mod} PUBLIC QSF)
+    set_target_properties(${prj}${mod} PROPERTIES OUTPUT_NAME "qsf-${prj}${mod}")
+    target_compile_definitions(${prj}${mod} PRIVATE ${flags} DEBUG=223)
+    message(STATUS "${Yellow}Binaries for project [${Green}${prj}${mod}${Yellow}] will be placed in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${ColourReset}")
+endmacro()
 
-
-
-
+add_subdirectory(examples/template)
+add_subdirectory(examples/nitrogen-3e)
 
 
 

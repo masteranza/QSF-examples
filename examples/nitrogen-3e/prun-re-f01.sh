@@ -1,6 +1,6 @@
 #!/bin/bash -l
 ## Nazwa zlecenia
-#SBATCH -J N3e-re-0.27
+#SBATCH -J N3e-re-f01
 ## Liczba alokowanych węzłów
 #SBATCH -N 8
 ## Liczba zadań per węzeł (domyślnie jest to liczba alokowanych rdzeni na węźle)
@@ -14,9 +14,9 @@
 ## Specyfikacja partycji
 #SBATCH -p plgrid
 ## Plik ze standardowym wyjściem
-#SBATCH --output="output.re27"
+#SBATCH --output="%x.out"
 ## Plik ze standardowym wyjściem błędów
-#SBATCH --error="error.re27"
+#SBATCH --error="%x.err"
 
 srun /bin/hostname
 
@@ -24,4 +24,4 @@ module load plgrid/tools/cmake plgrid/libs/fftw/3.3.9 plgrid/libs/mkl/2021.3.0 p
 
 cd $SLURM_SUBMIT_DIR
 
-mpiexec ./qsf-nitrogen-3e-re -f 0.27 -r
+mpiexec ./qsf-nitrogen-3e-re -f 0.1 -r

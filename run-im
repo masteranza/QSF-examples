@@ -5,7 +5,7 @@ cores=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu || ech
 echo "About to use $cores cores";
 
 #build
-cmake --build build --target install; 
+# cmake --build build --target install; 
 
 
 if [ "$1" = "" ]; then
@@ -17,12 +17,8 @@ fi
 if [ "$2" != "" ]; then
     cores=$2
 fi
-#run
-# ./template/qsf-template
-# time make ${proj}/${what}
-# [ "$1" == "clean" ] && exit 0
-# [ "$1" == "clean1d" ] && exit 0
 
+cmake --build build --target ${proj}-im; #-v for verbose
 cd examples/$proj
 
 # module load intelMPI
@@ -30,7 +26,7 @@ cd examples/$proj
 shift; 
 shift;
 echo ":::Remaining params passed to app [$@]"
-[ $(uname) = "Linux" ] && mpirun -np $cores ./qsf-${proj} $@
+[ $(uname) = "Linux" ] && mpirun -np $cores ./qsf-${proj}-im $@
 # [ $(uname) = "Linux" ] && mpirun -np 2 valgrind --leak-check=yes --show-leak-kinds=all --verbose ./${what}
 
 [ $(uname) = "Darwin" ] && mpirun --host localhost:$cores ./qsf-${proj}-im $@

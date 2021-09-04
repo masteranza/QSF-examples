@@ -24,6 +24,7 @@ int main(int argc, char* argv[])
 
 	std::string im_output_name = "./Results/im0ELECeDIMd__aft_xyz.psib0";
 
+	if (SHOULD_RUN(MODE::IM))
 	{
 		auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
 		p1.run<im_outputs_t>(
@@ -54,81 +55,83 @@ int main(int argc, char* argv[])
 		// 			// if (step == 1000)wf.save("ati1000_");
 		// 			// if (step == 10000)wf.save("ati10000_");
 		// 		}
-		// 		if (when == WHEN::AT_END)
-		// 			im_output_name = wf.save("im");
-
+				if (when == WHEN::AT_END)
+					im_output_name = wf.save("./Results/im");
 			});
 	}
-	CAP<CartesianGrid<2_D>> re_capped_grid{ {0.2, 256}, 64 };
-	CoulombInteraction re_potential{ {.Ncharge = 1, .Echarge = -1, .Nsoft = 0.0, .Esoft = 0.0 } };
-
-	using F1 = Field<AXIS::XYZ, SinPulse>;
-	// using F2 = Field<AXIS::Y, GaussianEnvelope<SinPulse>>;
-	DipoleCoupling<VelocityGauge, F1> re_coupling
+	if (SHOULD_RUN(MODE::RE))
 	{
-		SinPulse{{
-			// .F0 = .2, .omega = 0.06,
-			.F0 = .2 * sqrt(2. / 3.), .omega = 0.06,
-			.ncycles = 1.0, .FWHM_percent = 0.9,
-			.phase_in_pi_units = 0, .delay_in_cycles = 0
-			}}
-		// ,GaussianEnvelope<SinPulse>{ {
-			// .F0 = 0.1, .omega = 0.06,
-			// .ncycles = 4.0, .FWHM_percent = 0.5,
-			// .phase_in_pi_units = 0, .delay_in_cycles = 0
-			// }}
-	};
+		CAP<CartesianGrid<2_D>> re_capped_grid{ {0.2, 256}, 64 };
+		CoulombInteraction re_potential{ {.Ncharge = 1, .Echarge = -1, .Nsoft = 0.0, .Esoft = 0.0 } };
 
-	auto re_outputs = BufferedBinaryOutputs <
-		VALUE<Step, Time>
-		, VALUE<F1>
-	   // , AVG<Identity>
-	   // , AVG<PotentialEnergy>
-   // , PROJ<EIGENSTATES, Identity>
-	   // , AVG<DERIVATIVE<0, PotentialEnergy>>
-	   // , FLUX<BOX<3>>
-	   // AUXILLARY_VALUES<ETAOperator>>; /* Estimated end of computation */
-	>{ {.comp_interval = 1, .log_interval = 20} };
+		using F1 = Field<AXIS::XYZ, SinPulse>;
+		// using F2 = Field<AXIS::Y, GaussianEnvelope<SinPulse>>;
+		DipoleCoupling<VelocityGauge, F1> re_coupling
+		{
+			SinPulse{{
+				// .F0 = .2, .omega = 0.06,
+				.F0 = .2 * sqrt(2. / 3.), .omega = 0.06,
+				.ncycles = 1.0, .FWHM_percent = 0.9,
+				.phase_in_pi_units = 0, .delay_in_cycles = 0
+				}}
+			// ,GaussianEnvelope<SinPulse>{ {
+				// .F0 = 0.1, .omega = 0.06,
+				// .ncycles = 4.0, .FWHM_percent = 0.5,
+				// .phase_in_pi_units = 0, .delay_in_cycles = 0
+				// }}
+		};
 
-	auto re_wf = Schrodinger::Spin0{ re_capped_grid, re_potential, re_coupling };
-	auto p2 = SplitPropagator<MODE::RE, SplitType, decltype(re_wf)>{ {.dt = 0.3}, std::move(re_wf) };
-	p2.run(re_outputs, [=](const WHEN when, const ind step, const uind pass, auto& wf)
-		   {
-			   if (when == WHEN::AT_START)
+		auto re_outputs = BufferedBinaryOutputs <
+			VALUE<Step, Time>
+			, VALUE<F1>
+		   // , AVG<Identity>
+		   // , AVG<PotentialEnergy>
+	   // , PROJ<EIGENSTATES, Identity>
+		   // , AVG<DERIVATIVE<0, PotentialEnergy>>
+		   // , FLUX<BOX<3>>
+		   // AUXILLARY_VALUES<ETAOperator>>; /* Estimated end of computation */
+		>{ {.comp_interval = 1, .log_interval = 20} };
+
+		auto re_wf = Schrodinger::Spin0{ re_capped_grid, re_potential, re_coupling };
+		auto p2 = SplitPropagator<MODE::RE, SplitType, decltype(re_wf)>{ {.dt = 0.3}, std::move(re_wf) };
+		p2.run(re_outputs, [=](const WHEN when, const ind step, const uind pass, auto& wf)
 			   {
-				   if (MPI::region == 0)
-					//    wf.load(im_output_name);
-					   wf.addUsingCoordinateFunction(
-						   [](auto... x) -> cxd
-						   {
-							//    std::size_t i = 2;
-							//    double res = 0.0;
-							//    ((res = x * 2.0, true) || ...);
-							//    ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
-							//    return sin(((x * 1.9) + ...));
-							//    return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
-							//    return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
-							   return gaussian(8.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
-						   });
+				   if (when == WHEN::AT_START)
+				   {
+					   if (MPI::region == 0)
+						//    wf.load(im_output_name);
+						   wf.addUsingCoordinateFunction(
+							   [](auto... x) -> cxd
+							   {
+								//    std::size_t i = 2;
+								//    double res = 0.0;
+								//    ((res = x * 2.0, true) || ...);
+								//    ((i++ == 0 ? (res = x * 2.0, true) : false) || ...);
+								//    return sin(((x * 1.9) + ...));
+								//    return gaussian(0, 2.0, x...) * cxd { cos(res), sin(res) };
+								//    return gaussian(8.0, 4.5, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+								   return gaussian(8.0, 4.0, x...) * cxd { cos(((x * 2.0) + ...)), sin(((x * 2.0) + ...)) };
+							   });
 
-				   logUser("wf loaded manually!");
-				   wf.save("at0_");
-			   }
-			   if (when == WHEN::DURING)
-			   {
-				   if (step == 1)wf.save("at1_");
-				//    if (step == 2)wf.save("at2_");
-				   if (step == 50)wf.save("at50_");
-				   if (step == 100)wf.save("at100_");
-				   if (step == 150)wf.save("at150_");
-				   if (step == 200)wf.save("at200_");
-				   if (step == 250)wf.save("at250_");
-				   if (step == 300)wf.save("at300_");
-				//    if (step == 350)wf.save("at350_");
-			   }
-			   if (when == WHEN::AT_END)
-				   wf.save("final");
-		   });
+					   logUser("wf loaded manually!");
+					   wf.save("at0_");
+				   }
+				   if (when == WHEN::DURING)
+				   {
+					   if (step == 1)wf.save("at1_");
+					//    if (step == 2)wf.save("at2_");
+					   if (step == 50)wf.save("at50_");
+					   if (step == 100)wf.save("at100_");
+					   if (step == 150)wf.save("at150_");
+					   if (step == 200)wf.save("at200_");
+					   if (step == 250)wf.save("at250_");
+					   if (step == 300)wf.save("at300_");
+					//    if (step == 350)wf.save("at350_");
+				   }
+				   if (when == WHEN::AT_END)
+					   wf.save("final");
+			   });
+	}
 	QSF::finalize();
 }
 

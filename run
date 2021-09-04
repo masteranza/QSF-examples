@@ -4,26 +4,20 @@ set -e #Fail on any error
 cores=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu || echo "$NUMBER_OF_PROCESSORS")
 echo "About to use $cores cores";
 
+#build
+
+
 if [ "$1" = "" ]; then
     proj="template"
 else
     proj=$1
 fi
-#build
-cmake --build build --target install; #-v for verbose
-
-
-
 
 if [ "$2" != "" ]; then
     cores=$2
 fi
-#run
-# ./template/qsf-template
-# time make ${proj}/${what}
-# [ "$1" == "clean" ] && exit 0
-# [ "$1" == "clean1d" ] && exit 0
 
+cmake --build build --target ${proj}; #-v for verbose
 cd examples/$proj
 
 # module load intelMPI
