@@ -7,7 +7,7 @@ using SplitType = MultiProductSplit<VTV, order>;
 
 int main(int argc, char* argv[])
 {
-	QSF::init(IOUtils::project_dir / IOUtils::results_dir, argc, argv);
+	QSF::init(argc, argv, IOUtils::project_dir / IOUtils::results_dir);
 	using im_grid_t = CartesianGrid<2_D>; //2_D == DIMS::D2
 	using im_wf_t = Schrodinger::Spin0<im_grid_t, CoulombInteraction>;
 	using im_outputs_t = BufferedBinaryOutputs<
@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 
 	std::string im_output_name = "./Results/im0ELECeDIMd__aft_xyz.psib0";
 
-	if (SHOULD_RUN(MODE::IM))
+	if (MODE_FILTER_OPT(MODE::IM))
 	{
 		auto p1 = SplitPropagator<MODE::IM, SplitType, im_wf_t>{};
 		p1.run<im_outputs_t>(
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 					im_output_name = wf.save("./Results/im");
 			});
 	}
-	if (SHOULD_RUN(MODE::RE))
+	if (MODE_FILTER_OPT(MODE::RE))
 	{
 		CAP<CartesianGrid<2_D>> re_capped_grid{ {0.2, 256}, 64 };
 		CoulombInteraction re_potential{ {.Ncharge = 1, .Echarge = -1, .Nsoft = 0.0, .Esoft = 0.0 } };
@@ -69,13 +69,13 @@ int main(int argc, char* argv[])
 		DipoleCoupling<VelocityGauge, F1> re_coupling
 		{
 			SinPulse{{
-				// .F0 = .2, .omega = 0.06,
-				.F0 = .2 * sqrt(2. / 3.), .omega = 0.06,
+				// .field = .2, .omega = 0.06,
+				.field = .2 * sqrt(2. / 3.), .omega = 0.06,
 				.ncycles = 1.0, .FWHM_percent = 0.9,
 				.phase_in_pi_units = 0, .delay_in_cycles = 0
 				}}
 			// ,GaussianEnvelope<SinPulse>{ {
-				// .F0 = 0.1, .omega = 0.06,
+				// .field = 0.1, .omega = 0.06,
 				// .ncycles = 4.0, .FWHM_percent = 0.5,
 				// .phase_in_pi_units = 0, .delay_in_cycles = 0
 				// }}
@@ -189,13 +189,13 @@ AT_STEP or AT_INTERVAL */
 // using F1 = Field<AXIS::X, SinPulse>;
 // F1 f1
 // {
-// 	SinPulse{{.F0 = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
+// 	SinPulse{{.field = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
 // };
 
 // using F2 = Field <AXIS::Y, GaussianEnvelope<SinPulse>>;
 // F2 f2
 // {
-// 	GaussianEnvelope<SinPulse>{ {.F0 = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
+// 	GaussianEnvelope<SinPulse>{ {.field = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
 // };
 
 // DipoleCoupling<VelocityGauge, F1, F2> re_coupling

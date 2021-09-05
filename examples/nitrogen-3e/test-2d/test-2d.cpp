@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 		.Nsoft = NEsoft,
 		.Esoft = NEsoft } };
 
-	if (SHOULD_RUN(MODE::IM)) //if any parameter is passed assume gs
+	if (MODE_FILTER_OPT(MODE::IM)) //if any parameter is passed assume gs
 	{
 		CAP<CartesianGrid<my_dim>> im_grid{ {dx, nodes}, nCAP };
 		auto im_wf = Schrodinger::Spin0{ im_grid, potential };
@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
 
 
 
-	if (SHOULD_RUN(MODE::RE))
+	if (MODE_FILTER_OPT(MODE::RE))
 	{
 		logUser("About to use %s ", re_input_file.c_str());
 
@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
 		DipoleCoupling<VelocityGauge, F1> re_coupling
 		{
 			ChemPhysEnvelope<ChemPhysPulse>{ {
-				.F0 = F0,
+				.field = field,
 				.omega = omega,
 				.ncycles = ncycles,
 				.phase_in_pi_units = phase_in_pi_units,

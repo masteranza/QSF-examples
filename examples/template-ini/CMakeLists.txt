@@ -1,49 +1,68 @@
-cmake_minimum_required(VERSION 3.8)
-project(QSF-examples)
-# Prepare the library
-add_subdirectory(QSF)
-add_subdirectory(extern/cxxopts)
-# Compile example projects
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(colors)
-define_colors()
+Builder("-im" "MODES_ENABLED=MODE::IM")
+Builder("-re" "MODES_ENABLED=MODE::RE")
+Builder("" "")
+
+# Builder(${PROJECT_NAME} "-im" "")
+
+
+# cmake_minimum_required(VERSION 3.8)
+# project(template LANGUAGES CXX)
+# Builder(${PROJECT_NAME} "-re" "")
+# Builder(${PROJECT_NAME} "" "")
+
+# set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(CMAKE_RULE_MESSAGES OFF)
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+# set(CMAKE_BUILD_TYPE Release)
 
 
 
 
-macro(Builder mod flags)
-    get_filename_component(prj ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-    string(REPLACE " " "_" prj ${prj})
-    cmake_minimum_required(VERSION 3.8)
-    project("${prj}${mod}" LANGUAGES CXX)
-
-    set(CMAKE_VERBOSE_MAKEFILE ON)
-    set(CMAKE_RULE_MESSAGES OFF)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-    set(CMAKE_BUILD_TYPE Release)
-    # add_compile_definitions(PROJNAME=${prj} DEBUG=223)
-    # im + re version
-    add_executable(${prj}${mod} "${prj}.cpp")
-    target_compile_options(${prj}${mod} PUBLIC -march=native -O3 -ffast-math) 
-    target_link_libraries(${prj}${mod} PUBLIC cxxopts::cxxopts)
-    target_link_libraries(${prj}${mod} PUBLIC QSF)
-    set_target_properties(${prj}${mod} PROPERTIES OUTPUT_NAME "qsf-${prj}${mod}")
-    target_compile_definitions(${prj}${mod} PRIVATE ${flags} DEBUG=223)
-    message(STATUS "${Yellow}Binaries for project [${Green}${prj}${mod}${Yellow}] will be placed in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${ColourReset}")
-endmacro()
-
-add_subdirectory(examples/template-ini)
-add_subdirectory(examples/nitrogen-3e)
+# # im + re version
+# add_executable(${PROJECT_NAME}${arg} ${PROJECT_NAME}.cpp)
+# target_compile_options(${PROJECT_NAME}${arg} PUBLIC -march=native -O3 -ffast-math) 
+# target_link_libraries(${PROJECT_NAME}${arg} PUBLIC cxxopts::cxxopts)
+# target_link_libraries(${PROJECT_NAME}${arg} PUBLIC QSF)
+# set_target_properties(${PROJECT_NAME}${arg} PROPERTIES OUTPUT_NAME "qsf-${PROJECT_NAME}${arg}")
 
 
+# # im version and re version seperately
+# add_executable(${PROJECT_NAME}-im ${PROJECT_NAME}.cpp)
+# add_executable(${PROJECT_NAME}-re ${PROJECT_NAME}.cpp)
+# target_compile_definitions(${PROJECT_NAME}-im PRIVATE MODES_ENABLED=MODE::IM)
+# target_compile_definitions(${PROJECT_NAME}-re PRIVATE MODES_ENABLED=MODE::RE)
+# target_compile_options(${PROJECT_NAME}-im PUBLIC -march=native -O3 -ffast-math) 
+# target_compile_options(${PROJECT_NAME}-re PUBLIC -march=native -O3 -ffast-math) 
+# target_link_libraries(${PROJECT_NAME}-im PUBLIC cxxopts::cxxopts)
+# target_link_libraries(${PROJECT_NAME}-re PUBLIC cxxopts::cxxopts)
+# target_link_libraries(${PROJECT_NAME}-im PUBLIC QSF)
+# target_link_libraries(${PROJECT_NAME}-re PUBLIC QSF)
+# set_target_properties(${PROJECT_NAME}-im PROPERTIES OUTPUT_NAME "qsf-${PROJECT_NAME}-im")
+# set_target_properties(${PROJECT_NAME}-re PROPERTIES OUTPUT_NAME "qsf-${PROJECT_NAME}-re")
 
+# add_compile_definitions(PROJNAME=${PROJECT_NAME} DEBUG=223)
+# message(STATUS "${Yellow}Binaries for project [${Green}${PROJECT_NAME}${Yellow}] will be placed in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${ColourReset}")
+
+
+
+
+
+
+
+
+
+
+#-W -Wall -Wextra -pedantic -Wno-unknown-pragmas -Wno-unused-parameter -Wno-gnu-zero-variadic-macro-arguments -Wno-pedantic
+# install(TARGETS ${PROJECT_NAME} 
+# DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+# set(CMAKE_STAGING_PREFIX ${CMAKE_CURRENT_SOURCE_DIR})
 
 # set(CMAKE_FIND_FRAMEWORK NEVER)
 # set(CMAKE_FIND_APPBUNDLE NEVER)
 # set(CMAKE_FIND_USE_CMAKE_SYSTEM_PATH FALSE)
 # set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 # set(CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}")
-# project(template LANGUAGES CXX)
+
 
 # set(default_build_type "Release")
 # if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -69,11 +88,11 @@ add_subdirectory(examples/nitrogen-3e)
 # set_target_properties(new_thing PROPERTIES SUFFIX ".so.1")
 # set_target_properties(new_thing PROPERTIES PREFIX "" SUFFIX ".so.${NEW_THING_VER}" )
 # set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
-# add_executable(${PROJECT_NAME} ${PROJECT_NAME}/${PROJECT_NAME}.cpp)
+
 # find_library (FFTW_LIBRARIES NAMES fftw3)
 # target_link_libraries(${PROJECT_NAME} PUBLIC ${FFTW_LIBRARIES}) 
 
-
+# add_subdirectory(QSF)
 
 # set(CMAKE_OSX_SYSROOT /opt/homebrew/)
 # set(CMAKE_SHARED_LINKER_FLAGS -lfftw3_mpi,-lfftw3)
@@ -109,21 +128,13 @@ add_subdirectory(examples/nitrogen-3e)
                 # OUTPUT_STRIP_TRAILING_WHITESPACE)
 # include(CheckCXXCompilerFlag)
 # add_compile_options(-march=native)
-# target_compile_definitions(${PROJECT_NAME}
-#   PRIVATE
-    # DIM=3
-    # DEBUG=1
-#     USE_SIMD=1
-#     INTERNAL_MACRO
-#   INTERFACE
-#     ONLY_CONSUMERS_CAN_SEE_THIS_DEFINE=42
-# )
+
 # if(ENABLE_MPI)
 # set(CMAKE_LIBRARY_PATH /opt/homebrew/lib)
     # target_link_libraries(MyTarget PUBLIC MPI::MPI_CXX)
 # endif()
 # target_link_libraries(QSF INTERFACE ${FFTW_LIBRARIES})
-# target_link_libraries(${PROJECT_NAME} PUBLIC QSF)
+
 # target_compile_options(${PROJECT_NAME} PRIVATE -lfftw -lm)
 # include(GNUInstallDirs)
 # set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -148,7 +159,7 @@ add_subdirectory(examples/nitrogen-3e)
 # target_compile_options(${PROJECT_NAME} PUBLIC -lm -lmpi -lfftw3_mpi -lfftw3)
 # target_link_libraries(${PROJECT_NAME} PUBLIC fftw3)
 # target_link_libraries(${PROJECT_NAME} PUBLIC FFTW3)
-# install(TARGETS ${PROJECT_NAME} DESTINATION  ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME})
+
 
 
 

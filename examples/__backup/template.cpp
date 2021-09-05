@@ -67,13 +67,13 @@ int main(int argc, char* argv[])
 	DipoleCoupling<VelocityGauge, F1> re_coupling
 	{
 		SinPulse{{
-			// .F0 = .2, .omega = 0.06,
-			.F0 = .2 * sqrt(2. / 3.), .omega = 0.06,
+			// .field = .2, .omega = 0.06,
+			.field = .2 * sqrt(2. / 3.), .omega = 0.06,
 			.ncycles = 1.0, .FWHM_percent = 0.9,
 			.phase_in_pi_units = 0, .delay_in_cycles = 0
 			}}
 		// ,GaussianEnvelope<SinPulse>{ {
-			// .F0 = 0.1, .omega = 0.06,
+			// .field = 0.1, .omega = 0.06,
 			// .ncycles = 4.0, .FWHM_percent = 0.5,
 			// .phase_in_pi_units = 0, .delay_in_cycles = 0
 			// }}
@@ -186,13 +186,13 @@ AT_STEP or AT_INTERVAL */
 // using F1 = Field<AXIS::X, SinPulse>;
 // F1 f1
 // {
-// 	SinPulse{{.F0 = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
+// 	SinPulse{{.field = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
 // };
 
 // using F2 = Field <AXIS::Y, GaussianEnvelope<SinPulse>>;
 // F2 f2
 // {
-// 	GaussianEnvelope<SinPulse>{ {.F0 = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
+// 	GaussianEnvelope<SinPulse>{ {.field = 0.1, .omega = 0.06, .ncycles = 4.0, .FWHM_percent = 0.5, .phase_in_pi_units = 0, .delay_in_cycles = 0}}
 // };
 
 // DipoleCoupling<VelocityGauge, F1, F2> re_coupling
