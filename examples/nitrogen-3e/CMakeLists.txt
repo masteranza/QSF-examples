@@ -2,6 +2,9 @@ Builder("-im" "MODES_ENABLED=MODE::IM")
 Builder("-re" "MODES_ENABLED=MODE::RE")
 Builder("" "")
 
+# Builder("-im" "MODES_ENABLED=1")
+# Builder("-re" "MODES_ENABLED=2")
+
 # cmake_minimum_required(VERSION 3.8)
 # project(nitrogen-3e LANGUAGES CXX)
 

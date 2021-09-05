@@ -19,7 +19,7 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 
 	options.add_options("Environment")
 		("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)")
-		("k,continue", "Continue calculations from the latest backup");
+		("k,continue", "Continue calculations from the latest backup (default: false)");
 
 	options.add_options("Testing")
 		("g,gaussian", "Start from gaussian wavepacket (default: false)")
@@ -50,6 +50,7 @@ int main(const int argc, char* argv[])
 
 	auto result = getOpts(argc, argv);
 	const bool remote = result["remote"].as<bool>();
+	const bool continu = result["continue"].as<bool>();
 	const bool testing = result["gaussian"].as<bool>();
 	const bool testing_momentum = result["momentum"].as<double>();
 	const ind nodes = result["nodes"].as<ind>();
@@ -64,14 +65,16 @@ int main(const int argc, char* argv[])
 	const double ncycles = result["cycles"].as<double>();
 	const double phase_in_pi_units = result["phase"].as<double>();
 	const double field = result["field"].as<double>();
-
+	const double dx = 100.0 / 511.0;
+	const int log_interval = 20;
+	// backup interval should be a multiple of log_interval
+	const ind halfcycle_steps = log_interval * ind(round(pi / omega / re_dt) / log_interval);
 
 	IO::path output_dir{ remote ? std::getenv("SCRATCH") : IO::project_dir };
 	output_dir /= remote ? IO::project_name : IO::results_dir;
 	if (testing) output_dir /= "test";
-
-
 	QSF::init(argc, argv, output_dir);
+
 	logImportant("remote: %d testing: %d", remote, testing);
 	if (result.count("help"))
 	{
@@ -81,20 +84,13 @@ int main(const int argc, char* argv[])
 		exit(0);
 	}
 
-	const double dx = 100.0 / 511.0;
-	const int log_interval = 20;
-
-	const ind halfcycle_steps = round(pi / omega / re_dt);
-
 	EckhardtSachaInteraction potential{ {
-		.Ncharge = Ncharge,
-		.Echarge = Echarge,
-		.Nsoft = NEsoft,
-		.Esoft = NEsoft } };
+		.Ncharge = Ncharge, .Echarge = Echarge,
+		.Nsoft = NEsoft, .Esoft = NEsoft } };
 
-	std::string re_input_file;
-	if (MODE_FILTER_OPT(MODE::IM)) //if any parameter is passed assume gs
+	if constexpr MODE_FILTER_OPT(MODE::IM)
 	{
+		QSF::subdirectory("groundstates");
 		CAP<CartesianGrid<my_dim>> im_grid{ {dx, nodes}, nCAP };
 		auto im_wf = Schrodinger::Spin0{ im_grid, potential };
 		auto im_outputs = BufferedBinaryOutputs<
@@ -107,14 +103,14 @@ int main(const int argc, char* argv[])
 			, AVG<KineticEnergy>
 			, ENERGY_TOTAL
 			, ENERGY_DIFFERENCE
-		>{ {.comp_interval = 1, .log_interval = 20} };
+		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
 		auto p1 = SplitPropagator<MODE::IM, SplitType, decltype(im_wf)>
 		{
 			{.dt = 0.3, .max_steps = 1000000, .state_accuracy = 10E-15},
 			std::move(im_wf)
 		};
-		p1.subdirectory("groundstates");
+
 		p1.run(im_outputs,
 			   [&](const WHEN when, const ind step, const uind pass, auto& wf)
 			   {
@@ -128,14 +124,17 @@ int main(const int argc, char* argv[])
 					   logUser("wf loaded manually!");
 				   }
 				   if (when == WHEN::AT_END)
-					   re_input_file = wf.save();
-			   });
+					   wf.save(std::to_string(nodes));
+			   }, continu);
 	}
 
-
-	if (MODE_FILTER_OPT(MODE::RE))
+	// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+	// Real-time part :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+	if constexpr MODE_FILTER_OPT(MODE::RE)
 	{
-		logUser("About to use %s ", re_input_file.c_str());
+		QSF::subdirectory("F0_" + std::to_string(field) + "/phase_" + std::to_string(phase_in_pi_units) + "pi");
+		// We need to pass absolute path 
+		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes));
 
 		CAP<MultiCartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
 		using F1 = Field<AXIS::XYZ, ChemPhysEnvelope<ChemPhysPulse>>;
@@ -157,17 +156,29 @@ int main(const int argc, char* argv[])
 			// , AVG<KineticEnergy>
 			// PROJ<EIGENSTATES, Identity>,
 			// , AVG<DERIVATIVE<0, PotentialEnergy>>
-			// , FLUX<BOX<3>>
 			// , ZOA_FLUX_3D
 			, VALUE<ETA>
 		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
 		auto re_wf = Schrodinger::Spin0{ re_capped_grid, potential, re_coupling };
 		auto p2 = SplitPropagator<MODE::RE, SplitType, decltype(re_wf)>{ {.dt = re_dt}, std::move(re_wf) };
-		p2.subdirectory("F0_" + std::to_string(field) + "/phase_" + std::to_string(phase_in_pi_units) + "pi");
-		if (testing)
-			p2.run(re_outputs,
-				   [=](const WHEN when, const ind step, const uind pass, auto& wf)
+
+		p2.run(re_outputs,
+			   [=](const WHEN when, const ind step, const uind pass, auto& wf)
+			   {
+				   if (!testing)
+				   {
+					   if ((when == WHEN::AT_START) && (MPI::region == 0))
+						   wf.load(im_output);
+					   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
+						   wf.backup(step);
+					   else if (when == WHEN::AT_END)
+					   {
+						   wf.save("final");
+						   wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
+					   }
+				   }
+				   else
 				   {
 					   if ((when == WHEN::AT_START) && (MPI::region == 0))
 					   {
@@ -181,38 +192,18 @@ int main(const int argc, char* argv[])
 					   if (when == WHEN::DURING)
 					   {
 						   if (step == 1 || step % halfcycle_steps == halfcycle_steps - 1)
-						   {
-							   static int enter = 0;
-							   wf.save("during_" + std::to_string(enter));
-							   enter++;
-						   }
+							   wf.snapshot("_step" + std::to_string(step));
+
 					   }
 					   if (when == WHEN::AT_END)
 					   {
 						   wf.save("final_");
-						   wf.saveIonizedJoined("final_ionized_joined_P_", { my_dim, REP::P, true, true, true, true, false });
+						   wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
 					   }
-				   });
-		else
-			p2.run(re_outputs,
-				   [=](const WHEN when, const ind step, const uind pass, auto& wf)
-				   {
-					   if ((when == WHEN::AT_START) && (MPI::region == 0))
-						   wf.load(re_input_file);
-
-					   if (when == WHEN::DURING)
-					   {
-						   if (step % halfcycle_steps == 0)
-							   wf.save("latest_backup");
-					   }
-					   if (when == WHEN::AT_END)
-					   {
-						   wf.save("latest_backup");
-						   wf.saveIonizedJoined("final_ionized_joined_P_", { my_dim, REP::P, true, true, true, true, false });
-					   }
-				   });
-
+				   }
+			   }, continu);
 	}
+
 	QSF::finalize();
 }
 
