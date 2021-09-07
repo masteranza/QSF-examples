@@ -54,4 +54,3 @@ There are three ways to provide configurations to a project:
 
 Examples of each can be found in the `examples directory`.
 
-
