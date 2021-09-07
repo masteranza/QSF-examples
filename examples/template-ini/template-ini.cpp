@@ -41,6 +41,7 @@ int main(int argc, char* argv[])
 						{
 							return cxd{ gaussian(0.0, 2.0, x...), 0 };
 						});
+						
 					logUser("wf loaded manually!");
 				}
 				if (when == WHEN::AT_END)
