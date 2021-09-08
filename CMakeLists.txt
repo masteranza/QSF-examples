@@ -33,6 +33,7 @@ endmacro()
 
 add_subdirectory(examples/template-ini)
 add_subdirectory(examples/nitrogen-3e)
+add_subdirectory(examples/neon-3e)
 
 
 
