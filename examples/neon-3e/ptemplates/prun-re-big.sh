@@ -2,17 +2,17 @@
 ## Nazwa zlecenia
 #SBATCH -J Ne3e-re-COMPRESSED
 ## Liczba alokowanych węzłów
-#SBATCH -N 8
+#SBATCH -N 32
 ## Liczba zadań per węzeł (domyślnie jest to liczba alokowanych rdzeni na węźle)
 #SBATCH --ntasks-per-node=16
 ## Ilość pamięci przypadającej na jeden rdzeń obliczeniowy (domyślnie 5GB na rdzeń)
-#SBATCH --mem-per-cpu=3200Mb
+#SBATCH --mem-per-cpu=3600Mb
 ## Maksymalny czas trwania zlecenia (format HH:MM:SS)
-#SBATCH --time=72:00:00
+#SBATCH --time=24:00:00
 ## Nazwa grantu do rozliczenia zużycia zasobów
 #SBATCH -A plgjonizacja5
 ## Specyfikacja partycji
-#SBATCH -p plgrid
+#SBATCH -p plgrid-large
 ## Plik ze standardowym wyjściem
 #SBATCH --output="%x.out"
 ## Plik ze standardowym wyjściem błędów
