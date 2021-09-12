@@ -132,7 +132,7 @@ int main(const int argc, char* argv[])
 	// Real-time part :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	if constexpr MODE_FILTER_OPT(MODE::RE)
 	{
-		QSF::subdirectory("F0_" + std::to_string(field) + "/phase_" + std::to_string(phase_in_pi_units) + "pi");
+		QSF::subdirectory("n" + std::to_string(nodes) "/F0_" + std::to_string(field) + "/phase_" + std::to_string(phase_in_pi_units) + "pi");
 		// We need to pass absolute path 
 		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes));
 
