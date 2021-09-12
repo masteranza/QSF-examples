@@ -1,6 +1,6 @@
 #!/bin/bash -l
 ## Nazwa zlecenia
-#SBATCH -J Ne3e-re-COMPRESSED
+#SBATCH -J Ne3e-big-re-COMPRESSED
 ## Liczba alokowanych węzłów
 #SBATCH -N 32
 ## Liczba zadań per węzeł (domyślnie jest to liczba alokowanych rdzeni na węźle)
