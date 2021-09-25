@@ -1,6 +1,10 @@
 [submodule "QSF"]
 	path = QSF
 	url = https://github.com/masteranza/QSF.git
+	branch = main
+	update = merge
 [submodule "extern/cxxopts"]
 	path = extern/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+	branch = master
+	update = merge
