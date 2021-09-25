@@ -55,9 +55,6 @@ int main(const int argc, char* argv[])
 	const bool testing_momentum = result["momentum"].as<double>();
 	const ind nodes = result["nodes"].as<ind>();
 	constexpr DIMS my_dim = 3_D;
-	const double Ncharge = 3.0 / sqrt(1.0);
-	const double Echarge = -sqrt(1.0);
-	const double NEsoft = 0.83;
 	const ind nCAP = nodes / result["border"].as<ind>();
 	const double re_dt = result["dt"].as<double>();
 	const double omega = 0.06;
@@ -85,8 +82,8 @@ int main(const int argc, char* argv[])
 	}
 
 	EckhardtSachaInteraction potential{ {
-		.Ncharge = Ncharge, .Echarge = Echarge,
-		.Nsoft = NEsoft, .Esoft = NEsoft } };
+		.Ncharge = 3.0 / sqrt(1.0), .Echarge = -sqrt(1.0),
+		.Nsoft = 0.83, .Esoft = 0.83 } };
 
 	if constexpr MODE_FILTER_OPT(MODE::IM)
 	{
@@ -107,7 +104,7 @@ int main(const int argc, char* argv[])
 
 		auto p1 = SplitPropagator<MODE::IM, SplitType, decltype(im_wf)>
 		{
-			{.dt = 0.3, .max_steps = 1000000, .state_accuracy = 10E-15},
+			PropagatorBase{.dt = 0.3, .max_steps = 1000000, .state_accuracy = 10E-15},
 			std::move(im_wf)
 		};
 

@@ -23,7 +23,7 @@ macro(Builder mod flags)
     set(CMAKE_BUILD_TYPE Release)
     # im + re version
     add_executable(${prj}${mod} "${prj}.cpp")
-    target_compile_options(${prj}${mod} PUBLIC -march=native -O3 -ffast-math) 
+    target_compile_options(${prj}${mod} PUBLIC -O3 -ffast-math $<$<CXX_COMPILER_ID:GNU>:-march=native>) 
     target_link_libraries(${prj}${mod} PUBLIC cxxopts::cxxopts)
     target_link_libraries(${prj}${mod} PUBLIC QSF)
     set_target_properties(${prj}${mod} PROPERTIES OUTPUT_NAME "qsf-${prj}${mod}")
