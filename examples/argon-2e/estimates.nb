@@ -1,0 +1,149 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 12.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      4551,        141]
+NotebookOptionsPosition[      3211,        108]
+NotebookOutlinePosition[      3603,        124]
+CellTagsIndexPosition[      3560,        121]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+ RowBox[{"2", 
+  RowBox[{"\[Pi]", "/", 
+   RowBox[{"\[Omega]from\[Lambda]Atomic", "[", "3100", "]"}]}]}]], "Input",
+ CellLabel->"In[1]:=",ExpressionUUID->"c082d5b5-eb5e-414c-bd30-ffaa1497692c"],
+
+Cell[BoxData["427.4899315147733905756`11.42021640338319"], "Output",
+ CellLabel->"Out[1]=",ExpressionUUID->"30421455-b391-46f9-801f-d8e889e7a379"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"UnitConvert", "[", 
+  RowBox[{
+   RowBox[{"Quantity", "[", 
+    RowBox[{"60", ",", "\"\<fs\>\""}], "]"}], ",", 
+   "\"\<AtomicUnitOfTime\>\""}], "]"}]], "Input",
+ CellLabel->"In[2]:=",ExpressionUUID->"9c3dcc0d-51e3-413a-ae49-aeec4e72ba15"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "2480.4824001109267334273`11.41048724687186", "\"atomic units\"", 
+   "atomic units", "\"AtomicUnitOfTime\""},
+  "Quantity"]], "Output",
+ CellLabel->"Out[2]=",ExpressionUUID->"7981007c-4d79-4888-ab6f-3512470c1305"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"UnitConvert", "[", 
+   RowBox[{
+    RowBox[{"Quantity", "[", 
+     RowBox[{"60", ",", "\"\<fs\>\""}], "]"}], ",", 
+    "\"\<AtomicUnitOfTime\>\""}], "]"}], "/", "0.3"}]], "Input",
+ CellLabel->"In[3]:=",ExpressionUUID->"9ea1f8ba-4098-48ed-8d98-fac9a932a84f"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "8268.274667036423`", "\"atomic units\"", "atomic units", 
+   "\"AtomicUnitOfTime\""},
+  "Quantity"]], "Output",
+ CellLabel->"Out[3]=",ExpressionUUID->"e70d2dc7-3610-4a97-9092-212bfd7b6f73"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"UnitConvert", "[", 
+    RowBox[{
+     RowBox[{"Quantity", "[", 
+      RowBox[{"60", ",", "\"\<fs\>\""}], "]"}], ",", 
+     "\"\<AtomicUnitOfTime\>\""}], "]"}], "/", "0.3"}], "/", 
+  RowBox[{"(", 
+   RowBox[{"2", 
+    RowBox[{"\[Pi]", "/", 
+     RowBox[{"\[Omega]from\[Lambda]Atomic", "[", "3100", "]"}]}]}], 
+   ")"}]}]], "Input",
+ CellLabel->"In[4]:=",ExpressionUUID->"cec73f00-9cbe-4486-80b8-0372601ec09c"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "19.34144890322565`", "\"atomic units\"", "atomic units", 
+   "\"AtomicUnitOfTime\""},
+  "Quantity"]], "Output",
+ CellLabel->"Out[4]=",ExpressionUUID->"fe9145ef-61a5-4ed8-b090-88c7260bdc7b"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Total", "[", 
+  RowBox[{"IpAtomic", "[", 
+   RowBox[{"\"\<Argon\>\"", ",", 
+    RowBox[{"{", 
+     RowBox[{"1", ",", "2"}], "}"}]}], "]"}], "]"}]], "Input",
+ CellLabel->"In[5]:=",ExpressionUUID->"eb2c4395-291c-4991-b2f8-0db979e9c2a2"],
+
+Cell[BoxData["1.5945155493639145637`4.999999834968128"], "Output",
+ CellLabel->"Out[5]=",ExpressionUUID->"cf7b4539-a529-44d0-8ea1-1c8fec8ca762"]
+}, Open  ]]
+},
+WindowSize->{840, 997},
+WindowMargins->{{600, Automatic}, {Automatic, 0}},
+FrontEndVersion->"12.3 for Mac OS X ARM (64-bit) (July 9, 2021)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"20034507-129f-4eb7-83e1-3517f3e45b0f"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 207, 4, 30, "Input",ExpressionUUID->"c082d5b5-eb5e-414c-bd30-ffaa1497692c"],
+Cell[790, 28, 146, 1, 34, "Output",ExpressionUUID->"30421455-b391-46f9-801f-d8e889e7a379"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[973, 34, 263, 6, 30, "Input",ExpressionUUID->"9c3dcc0d-51e3-413a-ae49-aeec4e72ba15"],
+Cell[1239, 42, 245, 5, 36, "Output",ExpressionUUID->"7981007c-4d79-4888-ab6f-3512470c1305"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1521, 52, 292, 7, 30, "Input",ExpressionUUID->"9ea1f8ba-4098-48ed-8d98-fac9a932a84f"],
+Cell[1816, 61, 221, 5, 36, "Output",ExpressionUUID->"e70d2dc7-3610-4a97-9092-212bfd7b6f73"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2074, 71, 455, 13, 30, "Input",ExpressionUUID->"cec73f00-9cbe-4486-80b8-0372601ec09c"],
+Cell[2532, 86, 221, 5, 36, "Output",ExpressionUUID->"fe9145ef-61a5-4ed8-b090-88c7260bdc7b"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2790, 96, 258, 6, 30, "Input",ExpressionUUID->"eb2c4395-291c-4991-b2f8-0db979e9c2a2"],
+Cell[3051, 104, 144, 1, 34, "Output",ExpressionUUID->"cf7b4539-a529-44d0-8ea1-1c8fec8ca762"]
+}, Open  ]]
+}
+]
+*)
+

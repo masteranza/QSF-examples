@@ -2,19 +2,20 @@
 set -e #Fail on any error
 
 cores=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu || echo "$NUMBER_OF_PROCESSORS")
-echo "About to use $cores cores";
 
-if [ "$1" = "" ]; then
-    proj="template"
-else
+if [ -n "$1" ]; then
     proj=$1
     shift; 
+else
+    proj="template"
 fi
 
-if [ "$2" != "" ]; then
-    cores=$2
+if [ -n "$1" ]; then
+    cores=$1
     shift;
 fi
+
+echo "About to use $cores cores";
 
 cmake --build build --target ${proj}; #-v for verbose
 cd examples/$proj

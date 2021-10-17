@@ -34,7 +34,7 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		("d,delay", "pulse delay [cycles]",
 		 cxxopts::value<double>()->default_value("0.0"))
 		("c,cycles", "Cycles [number]",
-		 cxxopts::value<double>()->default_value("14.0")->implicit_value("14.0"));
+		 cxxopts::value<double>()->default_value("20.0")->implicit_value("20.0"));
 
 	return options.parse(argc, argv);
 }
@@ -55,10 +55,10 @@ int main(const int argc, char* argv[])
 	const bool testing_momentum = result["momentum"].as<double>();
 	const ind nodes = result["nodes"].as<ind>();
 	constexpr DIMS my_dim = 2_D;
-	const double Ncharge = 3.0 / sqrt(0.5);
-	const double Echarge = -sqrt(0.5);
-	const double NEsoft = 1.02;
-	const ind nCAP = nodes / result["border"].as<ind>();
+	const double Ncharge = 2.0;
+	const double Echarge = -1.0;
+	const double NEsoft = 2.2;
+	const ind nCAP = 64;//nodes / result["border"].as<ind>();
 	const double re_dt = result["dt"].as<double>();
 	const double omega = 0.0146978556546; //3100um
 	const double delay_in_cycles = result["delay"].as<double>();
@@ -95,8 +95,6 @@ int main(const int argc, char* argv[])
 		auto im_wf = Schrodinger::Spin0{ im_grid, potential };
 		auto im_outputs = BufferedBinaryOutputs<
 			VALUE<Step, Time>
-			// , OPERATION<Orthogonalize>
-			// , OPERATION<AntiSymmetrize<3_D>>
 			, OPERATION<Normalize>
 			, AVG<Identity>
 			, AVG<PotentialEnergy>
@@ -107,7 +105,7 @@ int main(const int argc, char* argv[])
 
 		auto p1 = SplitPropagator<MODE::IM, SplitType, decltype(im_wf)>
 		{
-			{.dt = 0.3, .max_steps = 1000000, .state_accuracy = 10E-15},
+			{.dt = 0.1, .max_steps = 1000000, .state_accuracy = 10E-15},
 			std::move(im_wf)
 		};
 
@@ -136,14 +134,15 @@ int main(const int argc, char* argv[])
 		// We need to pass absolute path 
 		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes));
 
-		CAP<MultiCartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
-		using F1 = Field<AXIS::XYZ, ChemPhysEnvelope<ChemPhysPulse>>;
+		CAP<CartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
+		using F1 = Field<AXIS::XYZ, GaussianEnvelope<SinPulse>>;
 		DipoleCoupling<VelocityGauge, F1> re_coupling
 		{
-			ChemPhysEnvelope<ChemPhysPulse>{ {
-				.field = sqrt(2. / 3.) * field,
+			GaussianEnvelope<SinPulse>{ {
+				.field = sqrt(3. / 4.) * field,
 				.omega = omega,
 				.ncycles = ncycles,
+				.FWHM_percent = 0.3,
 				.phase_in_pi_units = phase_in_pi_units,
 				.delay_in_cycles = delay_in_cycles}}
 		};
@@ -152,11 +151,10 @@ int main(const int argc, char* argv[])
 			VALUE<Step, Time>
 			, VALUE<F1>
 			, AVG<Identity>
-			// , AVG<PotentialEnergy>
-			// , AVG<KineticEnergy>
-			// PROJ<EIGENSTATES, Identity>,
-			// , AVG<DERIVATIVE<0, PotentialEnergy>>
-			// , ZOA_FLUX_3D
+			, AVG<PotentialEnergy>
+			, AVG<KineticEnergy>
+			, AVG<DERIVATIVE<0, PotentialEnergy>>
+			, ZOA_FLUX_2D
 			, VALUE<ETA>
 		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
@@ -175,7 +173,7 @@ int main(const int argc, char* argv[])
 					   else if (when == WHEN::AT_END)
 					   {
 						   wf.save("final");
-						   wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
+						//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
 					   }
 				   }
 				   else
@@ -198,7 +196,7 @@ int main(const int argc, char* argv[])
 					   if (when == WHEN::AT_END)
 					   {
 						   wf.save("final_");
-						   wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
+						//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
 					   }
 				   }
 			   }, continu);
