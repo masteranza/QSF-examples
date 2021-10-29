@@ -11,7 +11,7 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		("n,nodes", "Number of nodes [positive integer]",
 		 cxxopts::value<ind>()->default_value("1024"))
 		("t,dt", "Set the timedelta [a.u.]",
-		 cxxopts::value<double>()->default_value("0.1"))
+		 cxxopts::value<double>()->default_value("0.2"))
 		("s,soft", "Set the coulomb softener (epsilon) [length^2]=[a.u.^2]",
 		 cxxopts::value<double>()->default_value("0.92"))
 		("b,border", "Number of border nodes defined as nCAP=nodes/# [positive integer]",
@@ -33,8 +33,10 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		 cxxopts::value<double>()->default_value("0.0"))
 		("d,delay", "pulse delay [cycles]",
 		 cxxopts::value<double>()->default_value("0.0"))
+		("w,fwhm", "FWHM [cycles]",
+		 cxxopts::value<double>()->default_value("6.0"))
 		("c,cycles", "Cycles [number]",
-		 cxxopts::value<double>()->default_value("20.0")->implicit_value("20.0"));
+		 cxxopts::value<double>()->default_value("22.0")->implicit_value("22.0"));
 
 	return options.parse(argc, argv);
 }
@@ -61,6 +63,7 @@ int main(const int argc, char* argv[])
 	const ind nCAP = 64;//nodes / result["border"].as<ind>();
 	const double re_dt = result["dt"].as<double>();
 	const double omega = 0.0146978556546; //3100um
+	const double FWHM_cycles = result["fwhm"].as<double>();
 	const double delay_in_cycles = result["delay"].as<double>();
 	const double ncycles = result["cycles"].as<double>();
 	const double phase_in_pi_units = result["phase"].as<double>();
@@ -130,19 +133,19 @@ int main(const int argc, char* argv[])
 	// Real-time part :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	if constexpr MODE_FILTER_OPT(MODE::RE)
 	{
-		QSF::subdirectory("n" + std::to_string(nodes) + "/F0_" + std::to_string(field) + "/phase_" + std::to_string(phase_in_pi_units) + "pi");
+		QSF::subdirectory("n" + std::to_string(nodes) + "/F0_" + std::to_string(field) + "/fwhm_cycles_" + std::to_string(FWHM_cycles));
 		// We need to pass absolute path 
 		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes));
 
 		CAP<CartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
-		using F1 = Field<AXIS::XYZ, GaussianEnvelope<SinPulse>>;
+		using F1 = Field<AXIS::XY, GaussianEnvelope<SinPulse>>;
 		DipoleCoupling<VelocityGauge, F1> re_coupling
 		{
 			GaussianEnvelope<SinPulse>{ {
 				.field = sqrt(3. / 4.) * field,
 				.omega = omega,
 				.ncycles = ncycles,
-				.FWHM_percent = 0.3,
+				.FWHM_percent = FWHM_cycles / ncycles,
 				.phase_in_pi_units = phase_in_pi_units,
 				.delay_in_cycles = delay_in_cycles}}
 		};
