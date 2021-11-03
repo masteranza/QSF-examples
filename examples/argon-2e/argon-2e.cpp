@@ -10,6 +10,8 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		("h,help", "Print help")
 		("n,nodes", "Number of nodes [positive integer]",
 		 cxxopts::value<ind>()->default_value("1024"))
+		("x,dx", "Set the spacedelta [a.u.]",
+		 cxxopts::value<double>()->default_value("0.2"))
 		("t,dt", "Set the timedelta [a.u.]",
 		 cxxopts::value<double>()->default_value("0.2"))
 		("s,soft", "Set the coulomb softener (epsilon) [length^2]=[a.u.^2]",
@@ -36,7 +38,7 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		("w,fwhm", "FWHM [cycles]",
 		 cxxopts::value<double>()->default_value("6.0"))
 		("c,cycles", "Cycles [number]",
-		 cxxopts::value<double>()->default_value("22.0")->implicit_value("22.0"));
+		 cxxopts::value<double>()->default_value("30.0")->implicit_value("30.0"));
 
 	return options.parse(argc, argv);
 }
@@ -61,17 +63,17 @@ int main(const int argc, char* argv[])
 	const double Echarge = -1.0;
 	const double NEsoft = 2.2;
 	const ind nCAP = 64;//nodes / result["border"].as<ind>();
-	const double re_dt = result["dt"].as<double>();
 	const double omega = 0.0146978556546; //3100um
 	const double FWHM_cycles = result["fwhm"].as<double>();
 	const double delay_in_cycles = result["delay"].as<double>();
-	const double ncycles = result["cycles"].as<double>();
+	const double ncycles = FWHM_cycles * 3.0;//result["cycles"].as<double>();
 	const double phase_in_pi_units = result["phase"].as<double>();
 	const double field = result["field"].as<double>();
-	const double dx = 100.0 / 511.0;
-	const int log_interval = 20;
+	const double dx = result["dx"].as<double>();
+	const double re_dt = dx * dx * 0.5;//result["dt"].as<double>();
+	const int log_interval = 2000;
 	// backup interval should be a multiple of log_interval
-	const ind halfcycle_steps = log_interval * ind(round(pi / omega / re_dt) / log_interval);
+	const ind halfcycle_steps = log_interval;//log_interval * ind(round(pi / omega / re_dt) / log_interval);
 
 	IO::path output_dir{ remote ? std::getenv("SCRATCH") : IO::project_dir };
 	output_dir /= remote ? IO::project_name : IO::results_dir;
@@ -125,7 +127,7 @@ int main(const int argc, char* argv[])
 					   logUser("wf loaded manually!");
 				   }
 				   if (when == WHEN::AT_END)
-					   wf.save(std::to_string(nodes));
+					   wf.save(std::to_string(nodes) + "_" + std::to_string(dx));
 			   }, continu);
 	}
 
@@ -133,9 +135,9 @@ int main(const int argc, char* argv[])
 	// Real-time part :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	if constexpr MODE_FILTER_OPT(MODE::RE)
 	{
-		QSF::subdirectory("n" + std::to_string(nodes) + "/F0_" + std::to_string(field) + "/fwhm_cycles_" + std::to_string(FWHM_cycles));
+		QSF::subdirectory("n" + std::to_string(nodes) + "_" + std::to_string(dx) + "/F0_" + std::to_string(field) + "/fwhm_cycles_" + std::to_string(FWHM_cycles) + "/dt_" + std::to_string(re_dt));
 		// We need to pass absolute path 
-		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes));
+		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes) + "_" + std::to_string(dx));
 
 		CAP<CartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
 		using F1 = Field<AXIS::XY, GaussianEnvelope<SinPulse>>;
@@ -154,10 +156,10 @@ int main(const int argc, char* argv[])
 			VALUE<Step, Time>
 			, VALUE<F1>
 			, AVG<Identity>
-			, AVG<PotentialEnergy>
-			, AVG<KineticEnergy>
-			, AVG<DERIVATIVE<0, PotentialEnergy>>
-			, ZOA_FLUX_2D
+			// , AVG<PotentialEnergy>
+			// , AVG<KineticEnergy>
+			// , AVG<DERIVATIVE<0, PotentialEnergy>>
+			// , ZOA_FLUX_2D
 			, VALUE<ETA>
 		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
@@ -167,42 +169,22 @@ int main(const int argc, char* argv[])
 		p2.run(re_outputs,
 			   [=](const WHEN when, const ind step, const uind pass, auto& wf)
 			   {
-				   if (!testing)
+				   if ((when == WHEN::AT_START) && (MPI::region == 0))
+					   wf.load(im_output);
+				   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
 				   {
-					   if ((when == WHEN::AT_START) && (MPI::region == 0))
-						   wf.load(im_output);
-					   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
-						   wf.backup(step);
-					   else if (when == WHEN::AT_END)
-					   {
-						   wf.save("final");
-						//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
-					   }
+					   wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+					   wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 				   }
-				   else
+					// 	   wf.backup(step);
+				   else if (when == WHEN::AT_END)
 				   {
-					   if ((when == WHEN::AT_START) && (MPI::region == 0))
-					   {
-						   wf.addUsingCoordinateFunction(
-							   [=](auto... x) -> cxd
-							   {
-								   double mom = ((x * testing_momentum) + ...);
-								   return gaussian(2.0, 1.0, x...) * cxd { cos(mom), sin(mom) };
-							   });
-					   }
-					   if (when == WHEN::DURING)
-					   {
-						   if (step == 1 || step % halfcycle_steps == halfcycle_steps - 1)
-							   wf.snapshot("_step" + std::to_string(step));
+					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+					   wf.orthogonalizeWith(im_output);
+					   wf.save("finalP", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+				   }
 
-					   }
-					   if (when == WHEN::AT_END)
-					   {
-						   wf.save("final_");
-						//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
-					   }
-				   }
-			   }, continu);
+			   });
 	}
 
 	QSF::finalize();
