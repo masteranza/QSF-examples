@@ -23,7 +23,7 @@ macro(Builder mod flags)
     set(CMAKE_BUILD_TYPE Release)
     # im + re version
     add_executable(${prj}${mod} "${prj}.cpp")
-    target_compile_options(${prj}${mod} PUBLIC -O3 -ffast-math $<$<CXX_COMPILER_ID:GNU>:-march=native>) 
+    target_compile_options(${prj}${mod} PUBLIC -g -O3 -ffast-math $<$<CXX_COMPILER_ID:GNU>:-march=native>) 
     target_link_libraries(${prj}${mod} PUBLIC cxxopts::cxxopts)
     target_link_libraries(${prj}${mod} PUBLIC QSF)
     set_target_properties(${prj}${mod} PROPERTIES OUTPUT_NAME "qsf-${prj}${mod}")
@@ -35,6 +35,7 @@ add_subdirectory(examples/template-ini)
 add_subdirectory(examples/nitrogen-3e)
 add_subdirectory(examples/neon-3e)
 add_subdirectory(examples/argon-2e)
+add_subdirectory(examples/thiede)
 
 
 
