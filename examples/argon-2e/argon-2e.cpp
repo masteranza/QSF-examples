@@ -12,21 +12,24 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		 cxxopts::value<ind>()->default_value("1024"))
 		("x,dx", "Set the spacedelta [a.u.]",
 		 cxxopts::value<double>()->default_value("0.2"))
-		("t,dt", "Set the timedelta [a.u.]",
-		 cxxopts::value<double>()->default_value("0.2"))
-		("s,soft", "Set the coulomb softener (epsilon) [length^2]=[a.u.^2]",
-		 cxxopts::value<double>()->default_value("0.92"))
-		("b,border", "Number of border nodes defined as nCAP=nodes/# [positive integer]",
-		 cxxopts::value<ind>()->default_value("4"));
+		("g,gsrcut", "Set the range from core to cut after propagation [a.u.]",
+		 cxxopts::value<double>()->default_value("50.0"));
 
-	options.add_options("Environment")
-		("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)")
-		("k,continue", "Continue calculations from the latest backup (default: false)");
+   // ("t,dt", "Set the timedelta [a.u.]",
+   //  cxxopts::value<double>()->default_value("0.2"))
+   // ("s,soft", "Set the coulomb softener (epsilon) [length^2]=[a.u.^2]",
+   //  cxxopts::value<double>()->default_value("0.92"))
+   // ("b,border", "Number of border nodes defined as nCAP=nodes/# [positive integer]",
+   //  cxxopts::value<ind>()->default_value("4"));
 
-	options.add_options("Testing")
-		("g,gaussian", "Start from gaussian wavepacket (default: false)")
-		("m,momentum", "Initial momentum of gaussian wavepacket",
-		 cxxopts::value<double>()->default_value("3.0"));
+// options.add_options("Environment")
+// 	("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)")
+// 	("k,continue", "Continue calculations from the latest backup (default: false)");
+
+// options.add_options("Testing")
+// 	("g,gaussian", "Start from gaussian wavepacket (default: false)")
+// 	("m,momentum", "Initial momentum of gaussian wavepacket",
+// 	 cxxopts::value<double>()->default_value("3.0"));
 
 	options.add_options("Laser")
 		("f,field", "Field strength [a.u] value (default: 8*10^13 W/cm2)",
@@ -35,10 +38,10 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		 cxxopts::value<double>()->default_value("0.0"))
 		("d,delay", "pulse delay [cycles]",
 		 cxxopts::value<double>()->default_value("0.0"))
+		("o,postdelay", "post-pulse delay [cycles]",
+		 cxxopts::value<double>()->default_value("1.0"))
 		("w,fwhm", "FWHM [cycles]",
-		 cxxopts::value<double>()->default_value("6.0"))
-		("c,cycles", "Cycles [number]",
-		 cxxopts::value<double>()->default_value("30.0")->implicit_value("30.0"));
+		 cxxopts::value<double>()->default_value("6.0"));
 
 	return options.parse(argc, argv);
 }
@@ -47,44 +50,43 @@ constexpr auto opt = OPTIMS::NONE;
 constexpr auto order = 1;
 using VTV = Split3Base<REP::X, REP::P, REP::X>;
 using SplitType = MultiProductSplit<VTV, order>;
+// using TVT = Split3Base<REP::P, REP::X, REP::P>;
+// using SplitType = MultiProductSplit<TVT, order>;
 
 int main(const int argc, char* argv[])
 {
 	using namespace QSF;
 
 	auto result = getOpts(argc, argv);
-	const bool remote = result["remote"].as<bool>();
-	const bool continu = result["continue"].as<bool>();
-	const bool testing = result["gaussian"].as<bool>();
-	const bool testing_momentum = result["momentum"].as<double>();
 	const ind nodes = result["nodes"].as<ind>();
 	constexpr DIMS my_dim = 2_D;
 	const double Ncharge = 2.0;
 	const double Echarge = -1.0;
 	const double NEsoft = 2.2;
-	const ind nCAP = 64;//nodes / result["border"].as<ind>();
+	const ind nCAP = 32;//nodes / result["border"].as<ind>();
 	const double omega = 0.0146978556546; //3100um
 	const double FWHM_cycles = result["fwhm"].as<double>();
 	const double delay_in_cycles = result["delay"].as<double>();
-	const double ncycles = FWHM_cycles * 3.0;//result["cycles"].as<double>();
+	const double postdelay_in_cycles = result["postdelay"].as<double>();
+	//The value 3.3 is empirical giving a nice smooth gaussian tail tending towards zero 
+	const double ncycles = round(FWHM_cycles * 3.3);
 	const double phase_in_pi_units = result["phase"].as<double>();
 	const double field = result["field"].as<double>();
 	const double dx = result["dx"].as<double>();
-	const double re_dt = dx * dx * 0.5;//result["dt"].as<double>();
-	const int log_interval = 2000;
+	const double gsrcut = result["gsrcut"].as<double>();
+	const double re_dt = dx * 0.25;//dx * dx * 0.5;//result["dt"].as<double>();
+	const int log_interval = 1000;
 	// backup interval should be a multiple of log_interval
-	const ind halfcycle_steps = log_interval;//log_interval * ind(round(pi / omega / re_dt) / log_interval);
+	const ind halfcycle_steps = 1000;//log_interval * ind(round(pi / omega / re_dt) / log_interval);
 
-	IO::path output_dir{ remote ? std::getenv("SCRATCH") : IO::project_dir };
-	output_dir /= remote ? IO::project_name : IO::results_dir;
-	if (testing) output_dir /= "test";
+	IO::path output_dir{ IO::project_dir / IO::results_dir };
+
 	QSF::init(argc, argv, output_dir);
 
-	logImportant("remote: %d testing: %d", remote, testing);
 	if (result.count("help"))
 	{
 		if (!MPI::pID)
-			std::cout << options.help({ "","Environment", "Testing", "Laser" }) << std::endl;
+			std::cout << options.help({ "", "Laser" }) << std::endl;
 		QSF::finalize();
 		exit(0);
 	}
@@ -110,7 +112,7 @@ int main(const int argc, char* argv[])
 
 		auto p1 = SplitPropagator<MODE::IM, SplitType, decltype(im_wf)>
 		{
-			{.dt = 0.1, .max_steps = 1000000, .state_accuracy = 10E-15},
+			{.dt = re_dt, .max_steps = 1000000, .state_accuracy = 10E-15},
 			std::move(im_wf)
 		};
 
@@ -122,39 +124,48 @@ int main(const int argc, char* argv[])
 					   wf.addUsingCoordinateFunction(
 						   [](auto... x) -> cxd
 						   {
-							   return cxd{ gaussian(0.0, 3.0, x...), 0 };
+							   return cxd{ gaussian(0.0, 5.0, x...), 0 };
 						   });
 					   logUser("wf loaded manually!");
 				   }
 				   if (when == WHEN::AT_END)
 					   wf.save(std::to_string(nodes) + "_" + std::to_string(dx));
-			   }, continu);
+			   });
 	}
 
 	// ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	// Real-time part :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	if constexpr MODE_FILTER_OPT(MODE::RE)
 	{
-		QSF::subdirectory("n" + std::to_string(nodes) + "_" + std::to_string(dx) + "/F0_" + std::to_string(field) + "/fwhm_cycles_" + std::to_string(FWHM_cycles) + "/dt_" + std::to_string(re_dt));
+		QSF::subdirectory("fwhm_cycles_" + std::to_string(FWHM_cycles));
 		// We need to pass absolute path 
-		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes) + "_" + std::to_string(dx));
+		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes) + "_" + std::to_string(dx) + "_repX");
 
+		// MultiCartesianGrid
+		// CAP<MultiCartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
 		CAP<CartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
-		using F1 = Field<AXIS::XY, GaussianEnvelope<SinPulse>>;
-		DipoleCoupling<VelocityGauge, F1> re_coupling
+		using A1 = VectorPotential<AXIS::XY, GaussianEnvelope<SinPulse>, ConstantPulse>;
+		DipoleCoupling<VelocityGauge, A1> re_coupling
 		{
+			A1{
 			GaussianEnvelope<SinPulse>{ {
-				.field = sqrt(3. / 4.) * field,
+				.field = field * sqrt(3.) * 0.5 / omega,
 				.omega = omega,
 				.ncycles = ncycles,
 				.FWHM_percent = FWHM_cycles / ncycles,
 				.phase_in_pi_units = phase_in_pi_units,
-				.delay_in_cycles = delay_in_cycles}}
+				.delay_in_cycles = delay_in_cycles}},
+			ConstantPulse { {
+				.field = 0.0,
+				.omega = omega,
+				.ncycles = 0,//postdelay_in_cycles,
+				.delay_in_cycles = ncycles}}
+			}
 		};
 
 		auto re_outputs = BufferedBinaryOutputs <
 			VALUE<Step, Time>
-			, VALUE<F1>
+			, VALUE<A1>
 			, AVG<Identity>
 			// , AVG<PotentialEnergy>
 			// , AVG<KineticEnergy>
@@ -169,23 +180,35 @@ int main(const int argc, char* argv[])
 		p2.run(re_outputs,
 			   [=](const WHEN when, const ind step, const uind pass, auto& wf)
 			   {
-				   if ((when == WHEN::AT_START) && (MPI::region == 0))
-					   wf.load(im_output);
+				   if ((when == WHEN::AT_START) && (MPI::region == 0)) wf.load(im_output);
 				   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
 				   {
-					   wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
-					   wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+					   //    wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+					   //    wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 				   }
-					// 	   wf.backup(step);
 				   else if (when == WHEN::AT_END)
 				   {
-					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
-					   wf.orthogonalizeWith(im_output);
-					   wf.save("finalP", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+					//    wf.save("final");
+					//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
+					//    wf.orthogonalizeWith(im_output);
+					   wf.croossOut(gsrcut);
+
+					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X, .downscale = 1 });
+					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
+							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+
+					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X, .downscale = 2 });
+					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
+							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 2 });
+					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
+							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 4 });
+					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
+							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 8 });
 				   }
 
 			   });
 	}
+
 
 	QSF::finalize();
 }
