@@ -1,0 +1,2 @@
+rm -rf build;
+CC=/home/ranza/bin/mpicc CXX=/home/ranza/bin/mpic++ cmake . $@ -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -B build;

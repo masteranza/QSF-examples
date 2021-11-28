@@ -12,7 +12,7 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 		 cxxopts::value<ind>()->default_value("1024"))
 		("x,dx", "Set the spacedelta [a.u.]",
 		 cxxopts::value<double>()->default_value("0.2"))
-		("g,gsrcut", "Set the range from core to cut after propagation [a.u.]",
+		("post-core-cut", "Set the range from core to cut after propagation [a.u.]",
 		 cxxopts::value<double>()->default_value("50.0"));
 
    // ("t,dt", "Set the timedelta [a.u.]",
@@ -26,10 +26,10 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
 // 	("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)")
 // 	("k,continue", "Continue calculations from the latest backup (default: false)");
 
-// options.add_options("Testing")
-// 	("g,gaussian", "Start from gaussian wavepacket (default: false)")
-// 	("m,momentum", "Initial momentum of gaussian wavepacket",
-// 	 cxxopts::value<double>()->default_value("3.0"));
+	options.add_options("Testing")
+		("g,gaussian", "Start from gaussian wavepacket (default: false)")
+		("m,momentum", "Initial momentum of gaussian wavepacket",
+		 cxxopts::value<double>()->default_value("3.0"));
 
 	options.add_options("Laser")
 		("f,field", "Field strength [a.u] value (default: 8*10^13 W/cm2)",
@@ -58,26 +58,29 @@ int main(const int argc, char* argv[])
 	using namespace QSF;
 
 	auto result = getOpts(argc, argv);
+	const bool testing = result["gaussian"].as<bool>();
+	const bool testing_momentum = result["momentum"].as<double>();
+
 	const ind nodes = result["nodes"].as<ind>();
 	constexpr DIMS my_dim = 2_D;
 	const double Ncharge = 2.0;
 	const double Echarge = -1.0;
-	const double NEsoft = 2.2;
+	const double NEsoft = (testing ? 1000000.0 : 2.2);
 	const ind nCAP = 32;//nodes / result["border"].as<ind>();
 	const double omega = 0.0146978556546; //3100um
 	const double FWHM_cycles = result["fwhm"].as<double>();
 	const double delay_in_cycles = result["delay"].as<double>();
 	const double postdelay_in_cycles = result["postdelay"].as<double>();
 	//The value 3.3 is empirical giving a nice smooth gaussian tail tending towards zero 
-	const double ncycles = round(FWHM_cycles * 3.3);
+	const double ncycles = (testing ? 0.1 : round(FWHM_cycles * 3.3));
 	const double phase_in_pi_units = result["phase"].as<double>();
-	const double field = result["field"].as<double>();
+	const double field = testing ? 0.0 : result["field"].as<double>();
 	const double dx = result["dx"].as<double>();
-	const double gsrcut = result["gsrcut"].as<double>();
+	const double gsrcut = result["post-core-cut"].as<double>();
 	const double re_dt = dx * 0.25;//dx * dx * 0.5;//result["dt"].as<double>();
-	const int log_interval = 1000;
+	const int log_interval = testing ? 20 : 1000;
 	// backup interval should be a multiple of log_interval
-	const ind halfcycle_steps = 1000;//log_interval * ind(round(pi / omega / re_dt) / log_interval);
+	const ind halfcycle_steps = log_interval * (testing ? 1 : ind(round(pi / omega / re_dt) / log_interval));
 
 	IO::path output_dir{ IO::project_dir / IO::results_dir };
 
@@ -86,7 +89,7 @@ int main(const int argc, char* argv[])
 	if (result.count("help"))
 	{
 		if (!MPI::pID)
-			std::cout << options.help({ "", "Laser" }) << std::endl;
+			std::cout << options.help({ "", "Laser", "Testing" }) << std::endl;
 		QSF::finalize();
 		exit(0);
 	}
@@ -137,13 +140,15 @@ int main(const int argc, char* argv[])
 	// Real-time part :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	if constexpr MODE_FILTER_OPT(MODE::RE)
 	{
-		QSF::subdirectory("fwhm_cycles_" + std::to_string(FWHM_cycles));
+		QSF::subdirectory(testing ? "testing" : "fwhm_cycles_" + std::to_string(FWHM_cycles));
 		// We need to pass absolute path 
 		IO::path im_output = IO::root_dir / IO::path("groundstates/" + std::to_string(nodes) + "_" + std::to_string(dx) + "_repX");
-
-		// MultiCartesianGrid
-		// CAP<MultiCartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
+	#define MULTIGRID 1
+	#ifdef MULTIGRID
+		CAP<MultiCartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nodes / 4 };
+	#else
 		CAP<CartesianGrid<my_dim>> re_capped_grid{ {dx, nodes}, nCAP };
+	#endif
 		using A1 = VectorPotential<AXIS::XY, GaussianEnvelope<SinPulse>, ConstantPulse>;
 		DipoleCoupling<VelocityGauge, A1> re_coupling
 		{
@@ -180,30 +185,59 @@ int main(const int argc, char* argv[])
 		p2.run(re_outputs,
 			   [=](const WHEN when, const ind step, const uind pass, auto& wf)
 			   {
-				   if ((when == WHEN::AT_START) && (MPI::region == 0)) wf.load(im_output);
-				   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
+				   if (testing)
 				   {
-					   //    wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
-					   //    wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+					   if ((when == WHEN::AT_START) && (MPI::region == 0))
+					   {
+						   wf.addUsingCoordinateFunction(
+							   [=](auto... x) -> cxd
+							   {
+								   double mom = ((x * testing_momentum * 2.5) + ...);
+								   return gaussian(0.0, 4.0, x...) * cxd { cos(mom), sin(mom) };
+							   });
+					   }
+					   if (when == WHEN::DURING)
+					   {
+						   if (step == 1 || step % halfcycle_steps == halfcycle_steps - 1)
+							   wf.snapshot("_step" + std::to_string(step), DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+
+					   }
+					   if (when == WHEN::AT_END)
+					   {
+						   if (MPI::region == 3) wf.save("momenta", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+						   wf.save("sep_final");
+						   wf.saveIonizedJoined("final", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+
+					   }
+
 				   }
-				   else if (when == WHEN::AT_END)
+				   else
 				   {
-					//    wf.save("final");
-					//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
-					//    wf.orthogonalizeWith(im_output);
-					   wf.croossOut(gsrcut);
+					   if ((when == WHEN::AT_START) && (MPI::region == 0)) wf.load(im_output);
+					   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
+					   {
+						   //    wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+						   //    wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+					   }
+					   else if (when == WHEN::AT_END)
+					   {
+						//    wf.save("final");
+						//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
+						//    wf.orthogonalizeWith(im_output);
+					   #ifdef MULTIGRID
+						   if (MPI::region == 3) wf.save("momenta");
+						   wf.saveIonizedJoined("final", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+					   #else
+						   auto name = "n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
+							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut);
 
-					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X, .downscale = 1 });
-					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
-							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
-
-					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X, .downscale = 2 });
-					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
-							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 2 });
-					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
-							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 4 });
-					   wf.save("n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
-							   + "_p" + std::to_string(postdelay_in_cycles) + "_g" + std::to_string(gsrcut), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 8 });
+						   wf.croossOut(gsrcut);
+						   wf.save(name, DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+						   wf.save(name, DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 2 });
+						   wf.save(name, DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 4 });
+						   wf.save(name, DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 8 });
+					   #endif
+					   }
 				   }
 
 			   });

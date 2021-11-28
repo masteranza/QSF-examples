@@ -173,7 +173,7 @@ int main(const int argc, char* argv[])
 			// , AVG<PotentialEnergy>
 			// , AVG<KineticEnergy>
 			// , AVG<DERIVATIVE<0, PotentialEnergy>>
-			, ZOA_FLUX_2D
+			// , ZOA_FLUX_2D
 			, VALUE<ETA>
 		>{ {.comp_interval = 1, .log_interval = log_interval} };
 
@@ -185,19 +185,12 @@ int main(const int argc, char* argv[])
 			   {
 				   if ((when == WHEN::AT_START) && (MPI::region == 0))
 					   wf.load(im_output);
-				   else if (when == WHEN::DURING && (step % 1000 == 0))//halfcycle_steps == 0))
-				   {
-					//    wf.backup(step);
-					//    wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
-					//    wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
-				   }
-					// 	   wf.backup(step);
 				   else if (when == WHEN::AT_END)
 				   {
 					//    wf.save("final");
 					//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
 					//    wf.orthogonalizeWith(im_output);
-					   wf.croossOut();
+					   wf.croossOut(50.0);
 					   wf.save("finalX", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
 					   wf.save("finalP", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 				   }

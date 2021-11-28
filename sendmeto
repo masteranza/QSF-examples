@@ -19,7 +19,7 @@ CURRENT_DIR=`pwd`
 BASENAME=`basename "$CURRENT_DIR"`
 # set -x # Used to preview all the commands called (good for DEBUG)
 
-BASENAME="${BASENAME}"
+BASENAME="${BASENAME}-multi"
 rsync -avhr --dry-run --exclude='.*' --include='/' --exclude='**/Results' --exclude='**/groundstates' --exclude='build' --exclude='deprecated' --exclude='qsf-*' --exclude='*.png' --exclude='*.nb' --exclude='*.dat' --exclude='*.log' $sourceDir $address:$targetDir/$BASENAME
 #Ask
 read -p "${PINK}Above will be ${GREEN}uploaded${PINK} to ${GREEN}$host:$targetDir/$BASENAME${PINK}. Press ENTER to continue.${NC}"
