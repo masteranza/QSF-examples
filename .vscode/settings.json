@@ -1,3 +1,7 @@
 {
-    
+    "search.exclude": {
+        "**/.git": true,
+        "extern": true,
+        "*.nb": true
+    },
 }
