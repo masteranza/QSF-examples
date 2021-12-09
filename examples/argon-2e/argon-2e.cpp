@@ -22,9 +22,9 @@ cxxopts::ParseResult getOpts(const int argc, char* argv[])
    // ("b,border", "Number of border nodes defined as nCAP=nodes/# [positive integer]",
    //  cxxopts::value<ind>()->default_value("4"));
 
-// options.add_options("Environment")
-// 	("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)")
-// 	("k,continue", "Continue calculations from the latest backup (default: false)");
+	options.add_options("Environment")
+		("r,remote", "Running on remote cluster (AGH Prometeusz) (default: false)")
+		("k,continue", "Continue calculations from the latest backup (default: false)");
 
 	options.add_options("Testing")
 		("g,gaussian", "Start from gaussian wavepacket (default: false)")
@@ -58,9 +58,11 @@ int main(const int argc, char* argv[])
 	using namespace QSF;
 
 	auto result = getOpts(argc, argv);
+	const bool remote = result["remote"].as<bool>();
+	const bool continu = result["continue"].as<bool>();
 	const bool testing = result["gaussian"].as<bool>();
-	const bool testing_momentum = result["momentum"].as<double>();
-
+	const double testing_momentum = result["momentum"].as<double>();
+	logWarning("testing %d momentum %g", testing, testing_momentum);
 	const ind nodes = result["nodes"].as<ind>();
 	constexpr DIMS my_dim = 2_D;
 	const double Ncharge = 2.0;
@@ -80,9 +82,11 @@ int main(const int argc, char* argv[])
 	const double re_dt = dx * 0.25;//dx * dx * 0.5;//result["dt"].as<double>();
 	const int log_interval = testing ? 20 : 1000;
 	// backup interval should be a multiple of log_interval
-	const ind halfcycle_steps = log_interval * (testing ? 1 : ind(round(pi / omega / re_dt) / log_interval));
+	const ind ncycle_steps = log_interval * (testing ? 4 : ind(round(twopi / omega / re_dt) / log_interval));
 
-	IO::path output_dir{ IO::project_dir / IO::results_dir };
+	IO::path output_dir{ remote ? std::getenv("SCRATCH") : IO::project_dir };
+	output_dir /= remote ? IO::project_name : IO::results_dir;
+	if (testing) output_dir /= "test";
 
 	QSF::init(argc, argv, output_dir);
 
@@ -161,9 +165,9 @@ int main(const int argc, char* argv[])
 				.phase_in_pi_units = phase_in_pi_units,
 				.delay_in_cycles = delay_in_cycles}},
 			ConstantPulse { {
-				.field = 0.0,
+				.field = field,
 				.omega = omega,
-				.ncycles = 0,//postdelay_in_cycles,
+				.ncycles = postdelay_in_cycles,
 				.delay_in_cycles = ncycles}}
 			}
 		};
@@ -192,20 +196,26 @@ int main(const int argc, char* argv[])
 						   wf.addUsingCoordinateFunction(
 							   [=](auto... x) -> cxd
 							   {
-								   double mom = ((x * testing_momentum * 2.5) + ...);
+								   double mom = ((x * testing_momentum) + ...);
 								   return gaussian(0.0, 4.0, x...) * cxd { cos(mom), sin(mom) };
 							   });
 					   }
 					   if (when == WHEN::DURING)
 					   {
-						   if (step == 1 || step % halfcycle_steps == halfcycle_steps - 1)
+						   if (step == 1 || step % ncycle_steps == ncycle_steps - 1)
+						   {
 							   wf.snapshot("_step" + std::to_string(step), DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+							   wf.snapshot("_step" + std::to_string(step), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
+							   wf.backup(step);
+						   }
 
 					   }
 					   if (when == WHEN::AT_END)
 					   {
+						   wf.snapshot("_step" + std::to_string(step), DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
+						   wf.snapshot("_step" + std::to_string(step), DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 						   if (MPI::region == 3) wf.save("momenta", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
-						   wf.save("sep_final");
+						   wf.save("sep_final", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 						   wf.saveIonizedJoined("final", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 
 					   }
@@ -214,8 +224,9 @@ int main(const int argc, char* argv[])
 				   else
 				   {
 					   if ((when == WHEN::AT_START) && (MPI::region == 0)) wf.load(im_output);
-					   else if (when == WHEN::DURING && (step % halfcycle_steps == 0))
+					   else if (when == WHEN::DURING && (step % ncycle_steps == 0))
 					   {
+						   wf.backup(step);
 						   //    wf.snapshot("X", DUMP_FORMAT{ .dim = my_dim, .rep = REP::X });
 						   //    wf.snapshot("P", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 					   }
@@ -225,7 +236,10 @@ int main(const int argc, char* argv[])
 						//    wf.saveIonizedJoined("final_p", { .dim = my_dim, .rep = REP::P });
 						//    wf.orthogonalizeWith(im_output);
 					   #ifdef MULTIGRID
-						   if (MPI::region == 3) wf.save("momenta");
+						   if (MPI::region == 3) wf.save("momenta", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 1 });
+						   if (MPI::region == 3) wf.save("momenta", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 2 });
+						   if (MPI::region == 3) wf.save("momenta", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 4 });
+						   if (MPI::region == 3) wf.save("momenta", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P, .downscale = 8 });
 						   wf.saveIonizedJoined("final", DUMP_FORMAT{ .dim = my_dim, .rep = REP::P });
 					   #else
 						   auto name = "n" + std::to_string(nodes) + "_dx" + std::to_string(dx) + "_dt" + std::to_string(re_dt)
@@ -240,7 +254,7 @@ int main(const int argc, char* argv[])
 					   }
 				   }
 
-			   });
+			   }, continu);
 	}
 
 

@@ -1,3 +1,3 @@
-# Nitrogen-3e
+# Argon-2e
 
-Base project for calculations of Nitrogen like atom ($p^3$ valence shell) 
+Base project for calculations of Argon 2-electron model
